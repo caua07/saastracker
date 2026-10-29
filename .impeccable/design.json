@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T00:59:43Z",
+  "title": "Design System: Saastemics",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Cobalto de ação"
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Cobalto pressionado"
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Lavanda funcional"
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Periwinkle de foco"
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Branco frio"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Branco de superfície"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta navy"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Ardósia de apoio"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Linha fria"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Verde de estado"
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Vermelho destrutivo"
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Âmbar de atenção"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Título de acesso."
+      },
+      "financial": {
+        "displayName": "Financial",
+        "purpose": "Total financeiro com números tabulares."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título principal da área autenticada."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Cabeçalho de painel."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base global."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Botão padrão."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-small",
+        "value": "0 6px 18px #1c254514",
+        "purpose": "Menus e toast."
+      },
+      {
+        "name": "overlay-shadow",
+        "value": "0 18px 60px #1c254521",
+        "purpose": "Diálogo de confirmação."
+      },
+      {
+        "name": "sheet",
+        "value": "-12px 0 60px #17254515",
+        "purpose": "Painel lateral sobreposto."
+      },
+      {
+        "name": "secondary-button-border",
+        "value": "inset 0 0 0 1px #dce1ec",
+        "purpose": "Traço interno do botão secundário."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Entradas de menu, sheet e navegação mobile."
+      },
+      {
+        "name": "button-transition",
+        "value": "background 0.18s, color 0.18s, transform 0.18s",
+        "purpose": "Feedback dos botões."
+      },
+      {
+        "name": "sheet-entry",
+        "value": "sheet-in 0.3s var(--ease)",
+        "purpose": "Entrada do sheet."
+      },
+      {
+        "name": "menu-entry",
+        "value": "menu-in 0.16s var(--ease)",
+        "purpose": "Entrada de menus."
+      },
+      {
+        "name": "reduced-motion-duration",
+        "value": "0.01ms",
+        "purpose": "Duração reduzida de animações e transições quando solicitada pelo sistema."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide-min",
+        "value": "1500px"
+      },
+      {
+        "name": "compact-max",
+        "value": "1200px"
+      },
+      {
+        "name": "stacked-dashboard-max",
+        "value": "1000px"
+      },
+      {
+        "name": "mobile-navigation-max",
+        "value": "767px"
+      },
+      {
+        "name": "narrow-mobile-max",
+        "value": "560px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button / primary",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Variante real de Button em src/components/ui.tsx.",
+      "html": "<button type=\"button\" class=\"ds-button-primary\">Adicionar assinatura</button>",
+      "css": ".ds-button-primary{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:40px;padding:10px 15px;border:0;border-radius:9px;font-size:13px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;transition:background .18s,color .18s,transform .18s;background:var(--accent,#4659dd);color:var(--surface,#fff);}.ds-button-primary:hover:not(:disabled){background:var(--accent-hover,#3548c8);}.ds-button-primary:focus-visible{outline:3px solid #6879f0;outline-offset:3px;}.ds-button-primary:active:not(:disabled){transform:translateY(1px)}.ds-button-primary:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-primary{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Button / secondary",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Variante real de Button em src/components/ui.tsx.",
+      "html": "<button type=\"button\" class=\"ds-button-secondary\">Exportar</button>",
+      "css": ".ds-button-secondary{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:40px;padding:10px 15px;border:0;border-radius:9px;font-size:13px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;transition:background .18s,color .18s,transform .18s;background:var(--surface,#fff);box-shadow:inset 0 0 0 1px #dce1ec;color:#485269;}.ds-button-secondary:hover:not(:disabled){background:#f6f7fc;}.ds-button-secondary:focus-visible{outline:3px solid #6879f0;outline-offset:3px;}.ds-button-secondary:active:not(:disabled){transform:translateY(1px)}.ds-button-secondary:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-secondary{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Button / ghost",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Variante real de Button em src/components/ui.tsx.",
+      "html": "<button type=\"button\" class=\"ds-button-ghost\">Voltar</button>",
+      "css": ".ds-button-ghost{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:40px;padding:10px 15px;border:0;border-radius:9px;font-size:13px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;transition:background .18s,color .18s,transform .18s;background:transparent;color:var(--muted,#5f6b82);padding:8px 10px;}.ds-button-ghost:hover:not(:disabled){background:#f0f2f8;color:var(--ink,#202739);}.ds-button-ghost:focus-visible{outline:3px solid #6879f0;outline-offset:3px;}.ds-button-ghost:active:not(:disabled){transform:translateY(1px)}.ds-button-ghost:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-ghost{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Button / danger",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Variante real de Button em src/components/ui.tsx.",
+      "html": "<button type=\"button\" class=\"ds-button-danger\">Arquivar assinatura</button>",
+      "css": ".ds-button-danger{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:40px;padding:10px 15px;border:0;border-radius:9px;font-size:13px;font-weight:650;line-height:1.4;white-space:nowrap;cursor:pointer;transition:background .18s,color .18s,transform .18s;background:#fff0f1;color:var(--danger,#b73746);}.ds-button-danger:hover:not(:disabled){background:#ffe1e5;}.ds-button-danger:focus-visible{outline:3px solid #6879f0;outline-offset:3px;}.ds-button-danger:active:not(:disabled){transform:translateY(1px)}.ds-button-danger:disabled{opacity:.55;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-danger{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Field / text",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Campo rotulado de cadastro e edição.",
+      "html": "<label class=\"ds-field\">Nome da assinatura<input type=\"text\" placeholder=\"Ex.: minha ferramenta\" /><span class=\"ds-field-help\">Use o nome que aparece na cobrança.</span></label>",
+      "css": ".ds-field{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:650;color:#58667f;margin:0 0 18px}.ds-field input{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);border:1px solid #dde3ee;border-radius:8px;padding:10px 12px;background:var(--surface,#fff);min-height:42px;font-weight:500;font-size:13px;color:var(--ink,#202739)}.ds-field input::placeholder{color:#66728a}.ds-field input:focus-visible{outline:2px solid #6879f0;outline-offset:1px}.ds-field-help{display:block;font-size:11px;color:#66728a;line-height:1.8;font-weight:500}@media(max-width:560px){.ds-field input{font-size:16px;min-height:45px}}"
+    },
+    {
+      "name": "Navigation / active",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Item da navegação lateral com indicação ativa além da cor.",
+      "html": "<nav aria-label=\"Principal\" class=\"ds-nav\"><button type=\"button\" class=\"ds-nav-item ds-nav-active\" aria-current=\"page\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg>Visão geral<span class=\"ds-nav-dot\"></span></button><button type=\"button\" class=\"ds-nav-item\">Assinaturas</button></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:6px}.ds-nav-item{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:flex;align-items:center;gap:11px;padding:11px 13px;border:0;border-radius:8px;font-size:13px;font-weight:600;color:#677086;text-align:left;min-height:40px;background:transparent;cursor:pointer;transition:color .2s,background .2s}.ds-nav-item:hover{background:#f6f7fc;color:#33405b}.ds-nav-item:focus-visible{outline:3px solid #6879f0;outline-offset:3px;}.ds-nav-item.ds-nav-active{color:var(--accent,#4659dd);background:var(--accent-soft,#edf0ff);font-weight:750}.ds-nav-dot{margin-left:auto;width:5px;height:5px;background:var(--accent,#4659dd);border-radius:50%}@media(prefers-reduced-motion:reduce){.ds-nav-item{transition-duration:.01ms}}"
+    },
+    {
+      "name": "Status / active",
+      "kind": "chip",
+      "refersTo": "status-active",
+      "description": "Status informativo; não é botão nem filtro.",
+      "html": "<span class=\"ds-status\"><i aria-hidden=\"true\"></i>Ativa</span>",
+      "css": ".ds-status{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:inline-flex;align-items:center;gap:4px;font-size:10px;border-radius:4px;padding:2px 6px;background:var(--success-soft,#eaf6f0);color:var(--success,#216e54);white-space:nowrap}.ds-status i{width:4px;height:4px;background:currentColor;border-radius:50%}"
+    },
+    {
+      "name": "Panel / collection",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contêiner de conteúdo plano; cabeçalho aplica o próprio padding.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-heading\"><div><h2>Sua coleção</h2><p>Assinaturas em um só lugar.</p></div></header></section>",
+      "css": ".ds-panel{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);border:1px solid var(--line,#e9ecf3);border-radius:var(--radius,14px);background:var(--surface,#fff);min-width:0;color:var(--ink,#202739)}.ds-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:21px 23px 0}.ds-panel-heading h2{margin:0;font-size:14px;font-weight:750;letter-spacing:-.025em}.ds-panel-heading p{margin:4px 0 0;color:var(--muted,#5f6b82);font-size:11px;line-height:1.7}"
+    },
+    {
+      "name": "Search / collection",
+      "kind": "input",
+      "refersTo": "search",
+      "description": "Busca compacta; foco pertence ao contêiner.",
+      "html": "<label class=\"ds-search\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input type=\"search\" aria-label=\"Buscar assinaturas\" placeholder=\"Buscar assinaturas…\"/><kbd>⌘ K</kbd></label>",
+      "css": ".ds-search{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);display:flex;align-items:center;gap:8px;min-width:0;border:1px solid #e8ebf2;border-radius:7px;height:35px;padding:0 10px;color:#66728a}.ds-search:focus-within{outline:2px solid #8e9bf1;outline-offset:1px}.ds-search input{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);width:100%;min-width:0;background:none;border:none;outline:none;padding:0;color:var(--ink,#202739);font-size:11px}.ds-search input::placeholder{color:#66728a}.ds-search kbd{white-space:nowrap;font:10px var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);color:#66728a;border:1px solid #e8ebf2;border-radius:4px;padding:0 4px}@media(max-width:560px){.ds-search kbd{display:none}}"
+    },
+    {
+      "name": "Financial overview / empty",
+      "kind": "custom",
+      "refersTo": "financial-overview",
+      "description": "Resumo com ausência de valor explícita; não inventa custo pessoal.",
+      "html": "<section class=\"ds-overview\"><div class=\"ds-metric-label\">Custo mensal equivalente</div><div class=\"ds-cost\"><span class=\"ds-no-cost\">—</span></div><span class=\"ds-caption\">Adicione uma assinatura para começar</span><div class=\"ds-composition\"><span></span></div></section>",
+      "css": ".ds-overview{font-family:var(--font,\"Manrope Variable\",Manrope,Arial,sans-serif);background:var(--surface,#fff);border:1px solid var(--line,#e9ecf3);border-radius:var(--radius,14px);padding:25px 27px 0;color:var(--ink,#202739);overflow:hidden}.ds-metric-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#647087;font-weight:600}.ds-cost{font-size:41px;font-weight:750;letter-spacing:-.035em;line-height:1.45;font-variant-numeric:tabular-nums;white-space:nowrap}.ds-no-cost{color:#66728a}.ds-caption{font-size:10px;color:#66728a;display:block;margin-top:3px}.ds-composition{height:10px;display:flex;gap:3px;margin:24px 0 17px;overflow:hidden;border-radius:4px}.ds-composition span{width:100%;background:#eef0f7}@media(max-width:560px){.ds-overview{padding:20px 19px 0}.ds-cost{font-size:38px;line-height:1.5}.ds-composition{height:8px;margin-top:20px;margin-bottom:14px}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Coleção pessoal, sob controle",
+    "overview": "A coleção pessoal é a metáfora de trabalho desta implementação: serviços reconhecíveis, números bem alinhados e espaço para conferir cada compromisso. Branco frio, tinta navy e cobalto tornam o conjunto leve e preciso. A personalidade vem da tipografia, das marcas dos serviços e da composição, com ornamentação contida.\n\nUma única família tipográfica aproxima acesso, coleção, agenda, detalhes e formulários. Superfícies claras e divisórias discretas sustentam a leitura; o cobalto orienta ações e seleção. O sistema foi extraído do código entregue, sem comp visual de referência ou QUALITY BAR card fornecido; o julgamento de acabamento é relativo à direção registrada em `docs/design/dashboard.md`.",
+    "keyCharacteristics": [
+      "Branco frio e navy, com cobalto em ação e seleção.",
+      "Manrope local, hierarquia firme e números tabulares.",
+      "Marcas reconhecíveis, com monograma quando não há ícone disponível.",
+      "Superfícies delimitadas por tom e linha; sombra concentrada em sobreposições.",
+      "Reflow mobile que preserva identificação, custo e ações."
+    ],
+    "rules": [
+      {
+        "name": "The Action Cobalt Rule",
+        "body": "Use cobalto para ação, foco e seleção; os logos dos serviços preservam suas cores próprias.",
+        "section": "colors"
+      },
+      {
+        "name": "The Financial Legibility Rule",
+        "body": "Use algarismos tabulares nos totais financeiros e mantenha moeda e periodicidade próximas ao valor.",
+        "section": "typography"
+      },
+      {
+        "name": "The Overlay Depth Rule",
+        "body": "Painéis de conteúdo usam superfície e borda; menus, sheets e confirmações recebem a profundidade necessária à sua sobreposição.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do reutilizar os tokens reais do frontmatter e o CSS de origem ao criar novas superfícies.",
+      "Do preservar foco visível, rótulos acessíveis e a preferência por movimento reduzido.",
+      "Do usar marcas de serviço autênticas quando disponíveis e monogramas honestos como fallback.",
+      "Do testar a leitura de nome, moeda, periodicidade e ação no reflow mobile.",
+      "Do distinguir demonstração, informação desconhecida e evidência financeira por texto, além da cor."
+    ],
+    "donts": [
+      "Don't introduzir uma segunda família tipográfica sem uma decisão explícita de identidade.",
+      "Don't elevar todos os painéis com sombras de diálogo ou menu.",
+      "Don't substituir logos por símbolos genéricos quando o catálogo já possui o ícone.",
+      "Don't tratar a distribuição coleção + agenda desta tela como composição obrigatória de todas as páginas.",
+      "Don't comunicar integração sincronizada, custo zero ou dado real quando não existe evidência correspondente."
+    ]
+  }
+}

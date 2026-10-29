@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: saastemics
+      POSTGRES_DB: saastemics
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - saastemics_pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saastemics -d saastemics"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+volumes:
+  saastemics_pg:
