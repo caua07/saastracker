@@ -3,6 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { emptyWorkspace } from "../../src/domain/model";
 import { readFile, mkdir } from "node:fs/promises";
 import { sampleWorkspace } from "../support/workspace";
+import { nextScheduledDate } from "../../src/domain/discovery/schedule";
+import { dateLabel, today } from "../../src/domain/finance";
 
 async function signIn(page: Page) {
   await page.goto("/login");
@@ -704,4 +706,150 @@ test("Descoberta mostra Spotify isolado como possível e recusa falsos padrões 
   ).toHaveLength(1);
   await page.reload();
   await expect(page.locator(".candidate")).toHaveCount(0);
+});
+
+test("extratos de meses diferentes se cruzam automaticamente e preenchem a data observada", async ({
+  page,
+}) => {
+  await signIn(page);
+  await reset(page);
+  await page.getByRole("button", { name: "Descoberta", exact: true }).click();
+  const files = [
+    [
+      "09/10/2026;Compra no débito;Clube de leitura;-49,90;1000,00",
+      "15/10/2026;Compra no débito;Spotify;-29,90;970,10",
+    ],
+    ["10/08/2026;Compra no débito;Clube de leitura;-49,90;1000,00"],
+    ["11/09/2026;Compra no débito;Clube de leitura;-49,90;1000,00"],
+  ];
+  for (const [i, lines] of files.entries()) {
+    await page
+      .getByRole("button", { name: "Importar extrato", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator("input[type=file]").setInputFiles({
+      name: `arquivo-${i}.csv`,
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        ["Data;Histórico;Descrição;Valor;Saldo", ...lines].join("\n"),
+      ),
+    });
+    await expect(dialog.getByRole("status")).toContainText(
+      "Meses detectados pelas datas:",
+    );
+    if (i > 0)
+      await expect(dialog.getByRole("status")).toContainText("1 mês novo");
+    await dialog
+      .getByRole("button", { name: "Conferir prévia", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", {
+        name: `Importar ${lines.length} movimentos`,
+        exact: true,
+      })
+      .click();
+    await expect(
+      dialog.getByRole("heading", { name: "Extrato importado", exact: true }),
+    ).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "Revisar assinaturas", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: `Padrões recorrentes ${i === 2 ? 1 : 0}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+  }
+  await page.locator(".discovery-history summary").click();
+  await expect(page.locator(".discovery-history li")).toHaveCount(3);
+  const candidate = page.locator(".candidate").filter({
+    has: page.getByRole("heading", { name: "clube de leitura", exact: true }),
+  });
+  await expect(candidate).toContainText("Por volta do dia 10 de cada mês");
+  await expect(
+    candidate.locator('.candidate-calendar time[datetime="2026-11-10"]'),
+  ).toHaveCount(1);
+  await expect(candidate).toContainText(
+    "3 meses com cobranças · desvio observado de até 1 dia",
+  );
+  await expect(
+    candidate
+      .getByRole("list", { name: "Comparação das datas de cobrança" })
+      .locator("time"),
+  ).toHaveCount(3);
+  await expect(
+    page.getByRole("heading", { name: "Possíveis assinaturas 1", exact: true }),
+  ).toBeVisible();
+  await mkdir(".impeccable/review/multi-month", { recursive: true });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: ".impeccable/review/multi-month/desktop.png",
+    fullPage: true,
+  });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".sidebar")).toHaveCSS(
+    "transform",
+    "matrix(1, 0, 0, 1, -225, 0)",
+  );
+  await expect(page.locator(".main-shell")).toHaveCSS("margin-left", "0px");
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: ".impeccable/review/multi-month/mobile.png",
+    fullPage: true,
+  });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await candidate
+    .getByRole("button", { name: "Confirmar assinatura", exact: true })
+    .click();
+  const form = page.getByRole("dialog");
+  await expect(
+    form.getByLabel("Data-base observada", { exact: true }),
+  ).toHaveValue("2026-08-10");
+  await expect(
+    form.getByRole("combobox", { name: "Frequência", exact: true }),
+  ).toHaveValue("monthly");
+  await expect(form).toContainText(
+    dateLabel(nextScheduledDate("2026-08-10", "monthly", today()), true),
+  );
+  await form
+    .getByRole("button", { name: "Confirmar assinatura", exact: true })
+    .click();
+  await expect(form).toBeHidden();
+  const workspace = await (await page.request.get("/api/workspace")).json();
+  expect(workspace.imports).toHaveLength(3);
+  expect(workspace.transactions).toHaveLength(4);
+  expect(workspace.subscriptions[0]).toMatchObject({
+    cycle: "monthly",
+    anchorDate: "2026-08-10",
+  });
+  expect(
+    workspace.transactions.filter(
+      (t: { subscriptionId: string | null }) => !!t.subscriptionId,
+    ),
+  ).toHaveLength(3);
+  await page.reload();
+  await expect(page.locator(".candidate-calendar")).toHaveCount(0);
+  await expect(page.locator(".discovery-history summary")).toContainText(
+    "3 meses com movimentos",
+  );
 });

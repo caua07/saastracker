@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import type { Workspace } from "@/domain/model";
 import type { Candidate, DiscoveryReport } from "@/domain/recurrence";
-import { cycleLabels, dateLabel, money } from "@/domain/finance";
+import { cycleLabels, dateLabel, money, today } from "@/domain/finance";
+import { monthLabel } from "@/domain/discovery/periods";
 import { ServiceLogo } from "./brand";
 import { Button, EmptyState } from "./ui";
 import "./discovery.css";
@@ -40,6 +41,7 @@ export function DiscoveryPanel({
 }) {
   function card(c: Candidate) {
     const possible = c.basis === "recognized_service";
+    const expected = c.schedule?.nextDate ?? null;
     return (
       <article key={c.key} className="panel candidate">
         <div className="candidate-head">
@@ -62,6 +64,42 @@ export function DiscoveryPanel({
             {!possible && <span>{c.score}/100</span>}
           </span>
         </div>
+        {c.schedule && (
+          <div className="candidate-calendar">
+            <ol aria-label="Comparação das datas de cobrança">
+              {c.evidence.slice(-6).map((t) => (
+                <li key={t.id}>
+                  <span>{monthLabel(t.date.slice(0, 7))}</span>
+                  <time dateTime={t.date}>{dateLabel(t.date)}</time>
+                </li>
+              ))}
+            </ol>
+            <p>
+              {c.schedule.months.length}{" "}
+              {c.schedule.months.length === 1
+                ? "mês com cobrança"
+                : "meses com cobranças"}{" "}
+              · desvio observado de até {c.schedule.maxDeviation}{" "}
+              {c.schedule.maxDeviation === 1 ? "dia" : "dias"}
+              {expected && (
+                <>
+                  {" "}
+                  · Próxima no padrão:{" "}
+                  <time dateTime={expected}>
+                    {dateLabel(expected, true)}
+                  </time>{" "}
+                  (estimada)
+                </>
+              )}
+            </p>
+            {expected && expected < today() && (
+              <p>
+                Essa previsão já passou. Importe movimentos mais recentes para
+                conferir se a cobrança continuou.
+              </p>
+            )}
+          </div>
+        )}
         <div className="evidence-reasons">
           {c.reasons.map((reason) => (
             <span key={reason}>
@@ -183,6 +221,54 @@ export function DiscoveryPanel({
               </p>
             </details>
           </div>
+          <section
+            className="discovery-history"
+            aria-labelledby="history-heading"
+          >
+            <h3 id="history-heading">Meses identificados automaticamente</h3>
+            <p>
+              As datas dos movimentos juntam extratos da mesma conta, mesmo
+              enviados fora de ordem. Cada importação atualiza a análise; não é
+              preciso escolher o mês.
+            </p>
+            {report.history.map((history) => (
+              <details key={history.account}>
+                <summary>
+                  {history.account} · {history.months.length}{" "}
+                  {history.months.length === 1
+                    ? "mês com movimentos"
+                    : "meses com movimentos"}
+                </summary>
+                <ul>
+                  {history.months.map((period) => (
+                    <li key={period.month}>
+                      <time dateTime={period.month}>
+                        {monthLabel(period.month)}
+                      </time>
+                      <span>
+                        {period.count}{" "}
+                        {period.count === 1 ? "movimento" : "movimentos"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  {history.missingMonths > 0 && (
+                    <>
+                      {history.missingMonths}{" "}
+                      {history.missingMonths === 1
+                        ? "mês sem movimentos"
+                        : "meses sem movimentos"}{" "}
+                      entre o primeiro e o último registro.{" "}
+                    </>
+                  )}
+                  Ter movimentos em um mês não garante que o extrato esteja
+                  completo. Use o mesmo nome de conta ao importar outros
+                  períodos.
+                </p>
+              </details>
+            ))}
+          </section>
           {coverage.days < 60 && (
             <p className="discovery-context">
               <Info size={17} />

@@ -16,6 +16,10 @@ import { Button } from "./ui";
 import { useCsvImport } from "./imports/use-csv-import";
 import { MappingFields } from "./imports/mapping-fields";
 import { ImportReview } from "./imports/import-review";
+import {
+  compareStatementPeriods,
+  monthLabel,
+} from "@/domain/discovery/periods";
 
 export function ImportPanel({
   workspace,
@@ -37,6 +41,14 @@ export function ImportPanel({
   const [dragging, setDragging] = useState(false);
   const disabled = busy || flow.saving;
   const step = flow.phase === "file" ? 0 : flow.phase === "mapping" ? 1 : 2;
+  const comparison =
+    flow.mapping && flow.preview
+      ? compareStatementPeriods(
+          workspace.transactions,
+          flow.preview.rows,
+          flow.mapping.account.trim(),
+        )
+      : null;
   useEffect(() => {
     if (flow.phase !== "file") heading.current?.focus();
     scroll.current?.scrollTo({ top: 0 });
@@ -183,6 +195,19 @@ export function ImportPanel({
                   preview={flow.preview}
                   problem={flow.problem}
                 />
+                {comparison && comparison.incomingMonths.length > 0 && (
+                  <p className="import-format-note" role="status">
+                    Meses detectados pelas datas:{" "}
+                    {comparison.incomingMonths
+                      .map((m) => monthLabel(m.month))
+                      .join(", ")}
+                    .
+                    {comparison.priorMonths > 0
+                      ? ` Este extrato será comparado com o histórico desta conta (${comparison.priorMonths} ${comparison.priorMonths === 1 ? "mês" : "meses"}); ${comparison.newMonths.length} ${comparison.newMonths.length === 1 ? "mês novo será acrescentado" : "meses novos serão acrescentados"}.`
+                      : " Os próximos extratos desta mesma conta serão comparados automaticamente."}{" "}
+                    Os nomes dos arquivos não definem o período.
+                  </p>
+                )}
               </>
             )}
             {flow.phase === "review" && flow.preview && (
@@ -236,7 +261,9 @@ export function ImportPanel({
             </h2>
             <p>
               {flow.savedCount} movimentos salvos. Agora você pode revisar
-              possíveis assinaturas na Descoberta.
+              possíveis assinaturas na Descoberta. A análise cruza
+              automaticamente este extrato com os outros períodos da mesma
+              conta.
             </p>
             <div>
               <Button onClick={onDiscover}>

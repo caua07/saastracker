@@ -4,6 +4,10 @@ import { dayDiff, occurrence } from "../finance";
 
 export type Cadence = {
   cycle: Cycle;
+  anchorDate: string;
+  tolerance: number;
+  maxDeviation: number;
+  nextDate: string;
   fit: number;
   evidence: Transaction[];
   variation: Decimal;
@@ -30,9 +34,17 @@ export function findCadence(
   for (const spec of specifications) {
     const minimum = known ? spec.minimum : Math.max(spec.minimum, 3);
     if (uniqueDays.length < minimum) continue;
-    let best: { fit: number; evidence: Transaction[] } | null = null;
+    let best: {
+      fit: number;
+      evidence: Transaction[];
+      anchorDate: string;
+      maxDeviation: number;
+      nextDate: string;
+      error: number;
+    } | null = null;
     for (const anchor of uniqueDays.slice(0, 6)) {
       const periods = new Map<number, Transaction>();
+      const distances = new Map<number, number>();
       for (const row of uniqueDays) {
         if (row.date < anchor.date) continue;
         const approximate =
@@ -57,15 +69,34 @@ export function findCadence(
             slot = n;
           }
         }
-        if (distance <= spec.tolerance && !periods.has(slot))
+        if (
+          distance <= spec.tolerance &&
+          distance < (distances.get(slot) ?? Infinity)
+        ) {
           periods.set(slot, row);
+          distances.set(slot, distance);
+        }
       }
       const occupied = [...periods.keys()];
       const span = occupied.length ? Math.max(...occupied) + 1 : 0;
       // Multiple purchases in one period reduce support instead of inventing monthly plans.
       const fit = periods.size / Math.max(span, rows.length);
-      if (!best || fit > best.fit)
-        best = { fit, evidence: [...periods.values()] };
+      const error = [...distances.values()].reduce((sum, n) => sum + n, 0);
+      if (!best || fit > best.fit || (fit === best.fit && error < best.error))
+        best = {
+          fit,
+          evidence: [...periods.values()].sort((a, b) =>
+            a.date.localeCompare(b.date),
+          ),
+          anchorDate: anchor.date,
+          maxDeviation: Math.max(0, ...distances.values()),
+          nextDate: occurrence(
+            anchor.date,
+            spec.cycle,
+            Math.max(0, ...occupied) + 1,
+          ),
+          error,
+        };
     }
     if (
       !best ||
@@ -86,6 +117,10 @@ export function findCadence(
     if (!known && variation.gt(0.1)) continue;
     models.push({
       cycle: spec.cycle,
+      anchorDate: best.anchorDate,
+      tolerance: spec.tolerance,
+      maxDeviation: best.maxDeviation,
+      nextDate: best.nextDate,
       fit: best.fit,
       evidence: best.evidence,
       variation,

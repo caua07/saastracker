@@ -3,6 +3,8 @@ import type { Cycle, Transaction, Workspace } from "./model";
 import { dayDiff } from "./finance";
 import { merchantFor } from "./discovery/merchants";
 import { findCadence } from "./discovery/cadence";
+import { statementHistory, type AccountHistory } from "./discovery/periods";
+import { scheduleLabel, type ObservedSchedule } from "./discovery/schedule";
 export { merchantFor } from "./discovery/merchants";
 
 export type Candidate = {
@@ -20,11 +22,13 @@ export type Candidate = {
   evidenceHash: string;
   reasons: string[];
   variable: boolean;
+  schedule: ObservedSchedule | null;
 };
 export type DiscoveryReport = {
   candidates: Candidate[];
   recurring: Candidate[];
   possible: Candidate[];
+  history: AccountHistory[];
   coverage: {
     count: number;
     eligible: number;
@@ -83,6 +87,16 @@ export function analyzeDiscovery(workspace: Workspace): DiscoveryReport {
     if (!model && !merchant.known) continue;
     const basis = model ? "recurrence" : "recognized_service";
     const evidence = model?.evidence ?? rows;
+    const schedule: ObservedSchedule | null = model
+      ? {
+          anchorDate: model.anchorDate,
+          lastDate: evidence.at(-1)!.date,
+          nextDate: model.nextDate,
+          tolerance: model.tolerance,
+          maxDeviation: model.maxDeviation,
+          months: [...new Set(evidence.map((t) => t.date.slice(0, 7)))],
+        }
+      : null;
     const hash = evidenceHash(evidence);
     if (
       workspace.decisions.some((d) => d.key === key && d.evidenceHash === hash)
@@ -122,6 +136,7 @@ export function analyzeDiscovery(workspace: Workspace): DiscoveryReport {
     const reasons = model
       ? [
           `${evidence.length} cobranças em períodos distintos`,
+          scheduleLabel(schedule!, model.cycle),
           `${Math.round(model.fit * 100)}% dos períodos esperados têm uma cobrança`,
           variable
             ? "Valor variável; confira se há cobrança por uso"
@@ -158,6 +173,7 @@ export function analyzeDiscovery(workspace: Workspace): DiscoveryReport {
       evidenceHash: hash,
       reasons,
       variable,
+      schedule,
     });
   }
   candidates.sort(
@@ -170,6 +186,7 @@ export function analyzeDiscovery(workspace: Workspace): DiscoveryReport {
     candidates,
     recurring: candidates.filter((c) => c.basis === "recurrence"),
     possible: candidates.filter((c) => c.basis === "recognized_service"),
+    history: statementHistory(workspace.transactions),
     coverage: {
       count: dates.length,
       eligible,

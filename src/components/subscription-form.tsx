@@ -9,7 +9,11 @@ import {
   type Currency,
   type Cycle,
 } from "@/domain/model";
-import { today, cycleLabels } from "@/domain/finance";
+import { today, cycleLabels, dateLabel } from "@/domain/finance";
+import {
+  nextScheduledDate,
+  nextUnobservedDate,
+} from "@/domain/discovery/schedule";
 import { parseAmount } from "@/domain/imports/values";
 import type { Candidate } from "@/domain/recurrence";
 import { ServiceLogo } from "./brand";
@@ -46,7 +50,8 @@ export function SubscriptionForm({
   );
   const [anchorDate, setAnchorDate] = useState(
     initial?.anchorDate ??
-      (candidate?.basis === "recognized_service" ? "" : today()),
+      candidate?.schedule?.anchorDate ??
+      (candidate ? "" : today()),
   );
   const [startDate, setStartDate] = useState(initial?.startDate ?? today());
   const [status, setStatus] = useState<Subscription["status"]>(
@@ -203,7 +208,11 @@ export function SubscriptionForm({
           </select>
         </label>
         <label className="field">
-          Próxima cobrança
+          {candidate?.schedule
+            ? "Data-base observada"
+            : initial
+              ? "Data-base da cobrança"
+              : "Próxima cobrança"}
           <input
             required
             type="date"
@@ -212,6 +221,26 @@ export function SubscriptionForm({
           />
         </label>
       </div>
+      {(candidate?.schedule || initial) && cycle && anchorDate && (
+        <p className="field-help">
+          {candidate?.schedule
+            ? "Data-base trazida do extrato"
+            : "Data-base do calendário"}
+          , usada para preservar o dia do ciclo inclusive em meses curtos.
+          Próxima cobrança estimada:{" "}
+          {dateLabel(
+            candidate?.schedule &&
+              anchorDate === candidate.schedule.anchorDate &&
+              cycle === candidate.cycle
+              ? nextUnobservedDate(candidate.schedule, cycle, today())
+              : nextScheduledDate(anchorDate, cycle, today()),
+            true,
+          )}
+          .
+          {candidate?.schedule &&
+            " Confira o contrato antes de confirmar; a data de início não é inferida do extrato."}
+        </p>
+      )}
       <label className="field">
         Categoria
         <input
@@ -294,8 +323,9 @@ export function SubscriptionForm({
       </details>
       {candidate && (
         <p className="notice">
-          Você está confirmando uma sugestão. Confira valor, ciclo e próxima
-          cobrança antes de salvar.
+          Você está confirmando uma sugestão. Confira valor, ciclo e{" "}
+          {candidate.schedule ? "data-base" : "próxima cobrança"} antes de
+          salvar.
         </p>
       )}
       {error && (

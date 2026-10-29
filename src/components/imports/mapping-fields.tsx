@@ -72,7 +72,7 @@ export function MappingFields({
         </datalist>
         <span className="field-help">
           Use o mesmo nome em todos os extratos desta conta para reconhecer
-          movimentos já importados.
+          movimentos já importados e comparar cobranças de meses diferentes.
         </span>
       </label>
       <button
