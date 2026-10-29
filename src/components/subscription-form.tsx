@@ -10,7 +10,7 @@ import {
   type Cycle,
 } from "@/domain/model";
 import { today, cycleLabels } from "@/domain/finance";
-import { parseAmount } from "@/domain/imports";
+import { parseAmount } from "@/domain/imports/values";
 import type { Candidate } from "@/domain/recurrence";
 import { ServiceLogo } from "./brand";
 import { Button } from "./ui";

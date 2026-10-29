@@ -144,6 +144,13 @@ describe("valores e ausência de evidência", () => {
         direction: "credit",
         amount: "25",
       },
+      {
+        ...base,
+        id: "00000000-0000-4000-8000-000000000005",
+        kind: "income",
+        direction: "credit",
+        amount: "5000",
+      },
     ];
     expect(recordedSpend(w, "2026-01").total.toString()).toBe("75");
   });

@@ -1,316 +1,317 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  FileUp,
+  ArrowLeft,
   ArrowRight,
-  FileSpreadsheet,
+  Check,
   CheckCircle2,
+  FileSpreadsheet,
+  FileUp,
+  LockKeyhole,
+  LoaderCircle,
+  RefreshCw,
 } from "lucide-react";
-import {
-  readCsv,
-  suggestMapping,
-  previewCsv,
-  fileHash,
-  type CsvFile,
-  type CsvMapping,
-} from "@/domain/imports";
 import type { Workspace } from "@/domain/model";
-import { money } from "@/domain/finance";
 import { Button } from "./ui";
+import { useCsvImport } from "./imports/use-csv-import";
+import { MappingFields } from "./imports/mapping-fields";
+import { ImportReview } from "./imports/import-review";
 
 export function ImportPanel({
   workspace,
   onCommit,
   busy,
+  onDiscover,
+  onMovements,
 }: {
   workspace: Workspace;
   onCommit: (next: Workspace, message: string) => Promise<boolean>;
   busy: boolean;
+  onDiscover?: () => void;
+  onMovements?: () => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<CsvFile | null>(null);
-  const [mapping, setMapping] = useState<CsvMapping | null>(null);
-  const [name, setName] = useState("");
-  const [hash, setHash] = useState("");
-  const [error, setError] = useState("");
-  const [preview, setPreview] = useState<ReturnType<typeof previewCsv> | null>(
-    null,
-  );
-  const [validOnly, setValidOnly] = useState(false);
-  const [done, setDone] = useState(false);
-  const [importId, setImportId] = useState("");
-  function map<K extends keyof CsvMapping>(key: K, value: CsvMapping[K]) {
-    setMapping((m) => (m ? { ...m, [key]: value } : null));
-    setPreview(null);
-    setValidOnly(false);
-  }
-  async function choose(selected: File) {
-    try {
-      setError("");
-      if (selected.size > 10 * 1024 * 1024)
-        throw new Error("O arquivo deve ter até 10 MB.");
-      const text = await selected.text();
-      const data = readCsv(text);
-      if (!data.fields.length || !data.rows.length)
-        throw new Error("Não encontramos linhas com cabeçalho nesse CSV.");
-      const h = await fileHash(text);
-      if (workspace.imports.some((b) => b.hash === h))
-        throw new Error(
-          "Este arquivo já foi importado. Nenhum movimento foi duplicado.",
-        );
-      setFile(data);
-      setMapping(suggestMapping(data.fields));
-      setName(selected.name);
-      setHash(h);
-      setImportId(crypto.randomUUID());
-      setDone(false);
-      setPreview(null);
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Não foi possível ler o arquivo.",
-      );
-    }
-  }
-  if (done)
-    return (
-      <div className="import-success">
-        <CheckCircle2 size={44} />
-        <h3>Extrato importado</h3>
-        <p>
-          Os movimentos estão disponíveis. Vá para Descoberta para revisar
-          possíveis assinaturas.
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setFile(null);
-            setDone(false);
-          }}
-        >
-          Importar outro arquivo
-        </Button>
-      </div>
-    );
+  const flow = useCsvImport(workspace, onCommit);
+  const input = useRef<HTMLInputElement>(null),
+    heading = useRef<HTMLHeadingElement>(null),
+    scroll = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const disabled = busy || flow.saving;
+  const step = flow.phase === "file" ? 0 : flow.phase === "mapping" ? 1 : 2;
+  useEffect(() => {
+    if (flow.phase !== "file") heading.current?.focus();
+    scroll.current?.scrollTo({ top: 0 });
+  }, [flow.phase]);
   return (
-    <div className="import-panel">
+    <div className="csv-import-flow">
       <input
         ref={input}
         type="file"
         accept=".csv,text/csv"
         className="sr-only"
+        aria-label="Selecionar extrato CSV"
+        tabIndex={-1}
+        disabled={disabled}
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void choose(f);
+          if (f) void flow.choose(f);
           e.target.value = "";
         }}
       />
-      {!file ? (
-        <>
-          <button
-            className="upload-zone"
-            onClick={() => input.current?.click()}
-          >
-            <FileUp size={30} />
-            <strong>Escolha seu extrato CSV</strong>
-            <span>Até 10 MB · até 20 mil linhas</span>
-            <span className="upload-link">
-              Selecionar arquivo <ArrowRight size={15} />
-            </span>
-          </button>
-          <p className="field-help">
-            O arquivo deve ter um cabeçalho, data, descrição e valor. Você
-            poderá conferir tudo antes de importar. O arquivo original não será
-            armazenado.
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="file-summary">
-            <FileSpreadsheet size={24} />
-            <div>
-              <strong>{name}</strong>
-              <span>{file.rows.length} linhas encontradas</span>
+      {flow.phase !== "done" && (
+        <ol className="import-steps" aria-label="Etapas da importação">
+          {["Arquivo", "Leitura", "Conferência"].map((label, i) => (
+            <li
+              key={label}
+              className={step >= i ? "is-current" : ""}
+              aria-current={step === i ? "step" : undefined}
+            >
+              <span>{step > i ? <Check size={12} /> : i + 1}</span>
+              {label}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="import-scroll" ref={scroll}>
+        {flow.phase === "file" && (
+          <div className="import-upload">
+            <h2 ref={heading} tabIndex={-1}>
+              Seu extrato, sem trabalho extra.
+            </h2>
+            <p>
+              Traga o CSV da sua conta Inter. Você confere os movimentos antes
+              de salvar qualquer coisa.
+            </p>
+            <button
+              type="button"
+              className={`import-dropzone ${dragging ? "is-dragging" : ""}`}
+              disabled={flow.reading || disabled}
+              onClick={() => input.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!flow.reading) setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                if (disabled || flow.reading) return;
+                if (e.dataTransfer.files.length > 1)
+                  flow.reject(
+                    "Envie um arquivo por vez para conferir cada extrato.",
+                  );
+                else if (e.dataTransfer.files.length === 1)
+                  void flow.choose(e.dataTransfer.files[0]);
+              }}
+            >
+              {flow.reading ? (
+                <LoaderCircle size={30} className="spin" />
+              ) : (
+                <FileUp size={30} />
+              )}
+              <strong>
+                {flow.reading ? "Lendo seu extrato…" : "Solte o CSV aqui"}
+              </strong>
+              <span>
+                {flow.reading
+                  ? "Identificando colunas e verificando o arquivo"
+                  : "ou clique para selecionar um arquivo"}
+              </span>
+              <small>CSV · até 10 MB · 20 mil linhas</small>
+            </button>
+            <div className="import-privacy-note">
+              <LockKeyhole size={15} />
+              <span>
+                A leitura acontece neste navegador. Somente os movimentos que
+                você confirmar serão salvos.
+              </span>
             </div>
-            <Button variant="ghost" onClick={() => input.current?.click()}>
-              Trocar
-            </Button>
-          </div>
-          <div className="form-grid">
-            {(
-              [
-                ["date", "Data"],
-                ["description", "Descrição"],
-                ["amount", "Valor"],
-                ["currency", "Moeda (opcional)"],
-                ["id", "ID do movimento (opcional)"],
-              ] as const
-            ).map(([key, label]) => (
-              <label className="field" key={key}>
-                {label}
-                <select
-                  value={mapping?.[key] ?? ""}
-                  onChange={(e) => map(key, e.target.value)}
-                >
-                  <option value="">Selecionar...</option>
-                  {file.fields.map((f) => (
-                    <option key={f}>{f}</option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-          <label className="field">
-            Conta ou cartão de origem
-            <input
-              value={mapping?.account ?? ""}
-              maxLength={100}
-              onChange={(e) => map("account", e.target.value)}
-            />
-            <span className="field-help">
-              Use sempre o mesmo nome para a mesma conta, inclusive em arquivos
-              sobrepostos.
-            </span>
-          </label>
-          <div className="form-grid">
-            <label className="field">
-              Formato da data
-              <select
-                value={mapping?.dateFormat}
-                onChange={(e) =>
-                  map("dateFormat", e.target.value as "dmy" | "mdy")
-                }
-              >
-                <option value="dmy">Dia / mês / ano</option>
-                <option value="mdy">Mês / dia / ano</option>
-              </select>
-            </label>
-            <label className="field">
-              Saídas no arquivo
-              <select
-                value={mapping?.debitSign}
-                onChange={(e) =>
-                  map("debitSign", e.target.value as "negative" | "positive")
-                }
-              >
-                <option value="negative">Valores negativos</option>
-                <option value="positive">Valores positivos</option>
-              </select>
-            </label>
-          </div>
-          {!mapping?.currency && (
-            <label className="field">
-              Moeda dos movimentos
-              <select
-                value={mapping?.defaultCurrency}
-                onChange={(e) =>
-                  map("defaultCurrency", e.target.value as "BRL" | "USD")
-                }
-              >
-                <option value="BRL">BRL · Real</option>
-                <option value="USD">USD · Dólar</option>
-              </select>
-            </label>
-          )}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              try {
-                setError("");
-                if (mapping)
-                  setPreview(previewCsv(file, mapping, workspace, importId));
-              } catch (e) {
-                setError(
-                  e instanceof Error ? e.message : "Confira as colunas.",
-                );
-              }
-            }}
-          >
-            Conferir prévia <ArrowRight size={16} />
-          </Button>
-          {preview && (
-            <div className="import-preview">
-              <h3>{preview.rows.length} novos movimentos</h3>
+            <details className="import-help">
+              <summary>Qual arquivo devo escolher?</summary>
               <p>
-                {preview.duplicates} já existentes · {preview.errors.length}{" "}
-                erros
+                Use o extrato da conta com data, descrição e valor de cada
+                movimento. Um PDF de comprovante ou uma planilha renomeada para
+                .csv não funciona. Cabeçalhos e separadores variam; você poderá
+                ajustar a leitura.
               </p>
-              <div className="preview-table">
-                {preview.rows.slice(0, 5).map((row) => (
-                  <div key={row.id}>
-                    <span>
-                      {row.date}
-                      <strong>{row.description}</strong>
-                    </span>
-                    <span>
-                      {row.direction === "credit" ? "+" : "−"}{" "}
-                      {money(row.amount, row.currency)}
-                    </span>
-                  </div>
-                ))}
+            </details>
+          </div>
+        )}
+        {flow.document && flow.phase !== "done" && (
+          <>
+            <div className="import-file-strip">
+              <FileSpreadsheet size={21} />
+              <div>
+                <strong>{flow.document.name}</strong>
+                <span>
+                  {flow.document.profile} · {flow.document.encoding}
+                </span>
               </div>
-              {preview.errors.length > 0 && (
-                <>
-                  <div className="import-errors" role="status">
-                    {preview.errors.slice(0, 8).map((e, i) => (
-                      <p key={i}>{e}</p>
-                    ))}
-                  </div>
-                  <label className="check-field">
+              <Button
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => input.current?.click()}
+              >
+                <RefreshCw size={14} />
+                Trocar
+              </Button>
+            </div>
+            {flow.phase === "mapping" && flow.mapping && (
+              <>
+                <div className="import-title">
+                  <h2 ref={heading} tabIndex={-1}>
+                    Confira a leitura.
+                  </h2>
+                  <p>
+                    Identifique a conta e veja se datas, descrições e sinais
+                    fazem sentido.
+                  </p>
+                </div>
+                {flow.document.file.preambleLines > 0 && (
+                  <p className="import-format-note">
+                    Cabeçalho encontrado na linha{" "}
+                    {flow.document.file.headerLine}. Informações anteriores à
+                    tabela foram deixadas de fora.
+                  </p>
+                )}
+                <MappingFields
+                  file={flow.document.file}
+                  mapping={flow.mapping}
+                  change={flow.change}
+                  accounts={[
+                    ...new Set(workspace.transactions.map((t) => t.account)),
+                  ]}
+                  preview={flow.preview}
+                  problem={flow.problem}
+                />
+              </>
+            )}
+            {flow.phase === "review" && flow.preview && (
+              <>
+                <div className="import-title">
+                  <h2 ref={heading} tabIndex={-1}>
+                    Tudo no lugar?
+                  </h2>
+                  <p>
+                    {flow.preview.rows.length} novos · {flow.preview.duplicates}{" "}
+                    já existentes · {flow.preview.invalid} com erro ·{" "}
+                    {flow.preview.ignored + flow.preview.excluded} fora do lote
+                  </p>
+                  {flow.preview.period && (
+                    <span>
+                      {flow.preview.period.from.split("-").reverse().join("/")}{" "}
+                      a {flow.preview.period.to.split("-").reverse().join("/")}{" "}
+                      · {flow.mapping?.account}
+                    </span>
+                  )}
+                </div>
+                <ImportReview
+                  preview={flow.preview}
+                  toggle={flow.toggle}
+                  disabled={disabled}
+                />
+                {flow.preview.invalid > 0 && !flow.preview.blocking && (
+                  <label className="import-partial">
                     <input
                       type="checkbox"
-                      checked={validOnly}
-                      onChange={(e) => setValidOnly(e.target.checked)}
+                      checked={flow.allowPartial}
+                      disabled={disabled}
+                      onChange={(e) => flow.setAllowPartial(e.target.checked)}
                     />
-                    Importar somente as linhas válidas listadas
+                    <span>
+                      Importar somente as {flow.preview.rows.length} linhas
+                      válidas selecionadas. As {flow.preview.invalid} linhas com
+                      erro não serão salvas.
+                    </span>
                   </label>
-                </>
-              )}
-              <p className="field-help">
-                Sem um ID do emissor, descrições iguais podem ser ambíguas.
-                Confira a prévia. Parcelas, estornos, transferências e pagamento
-                de fatura recebem classificação separada.
-              </p>
+                )}
+              </>
+            )}
+          </>
+        )}
+        {flow.phase === "done" && (
+          <div className="import-complete">
+            <CheckCircle2 size={40} />
+            <h2 ref={heading} tabIndex={-1}>
+              Extrato importado
+            </h2>
+            <p>
+              {flow.savedCount} movimentos salvos. Agora você pode revisar
+              possíveis assinaturas na Descoberta.
+            </p>
+            <div>
+              <Button onClick={onDiscover}>
+                Revisar assinaturas
+                <ArrowRight size={16} />
+              </Button>
+              <Button variant="secondary" onClick={onMovements}>
+                Ver movimentos
+              </Button>
+            </div>
+            <button
+              type="button"
+              className="import-text-action"
+              onClick={flow.reset}
+            >
+              Importar outro arquivo
+            </button>
+          </div>
+        )}
+      </div>
+      {flow.error && (
+        <p className="form-error import-error" role="alert">
+          {flow.error}
+        </p>
+      )}
+      {flow.phase !== "done" && (
+        <footer className="import-actionbar">
+          <div className="import-action-context">
+            {flow.phase === "file" ? (
+              <>
+                <LockKeyhole size={15} />
+                <span>Seu arquivo original não é armazenado.</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={16} />
+                <span>
+                  {flow.phase === "mapping"
+                    ? "Nada foi salvo ainda."
+                    : `${flow.preview?.rows.length ?? 0} movimentos selecionados`}
+                </span>
+              </>
+            )}
+          </div>
+          {flow.phase === "mapping" && (
+            <Button disabled={disabled} onClick={flow.review}>
+              Conferir prévia
+              <ArrowRight size={16} />
+            </Button>
+          )}
+          {flow.phase === "review" && (
+            <div className="import-action-buttons">
               <Button
-                busy={busy}
-                disabled={
-                  !preview.rows.length ||
-                  (preview.errors.length > 0 && !validOnly)
-                }
-                onClick={async () => {
-                  const next = {
-                    ...workspace,
-                    transactions: [...workspace.transactions, ...preview.rows],
-                    imports: [
-                      ...workspace.imports,
-                      {
-                        id: importId,
-                        name,
-                        hash,
-                        count: preview.rows.length,
-                        createdAt: new Date().toISOString(),
-                        source: "csv" as const,
-                      },
-                    ],
-                  };
-                  if (
-                    await onCommit(
-                      next,
-                      `${preview.rows.length} movimentos importados`,
-                    )
-                  )
-                    setDone(true);
-                }}
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => flow.setPhase("mapping")}
               >
-                Importar {preview.rows.length} movimentos
+                <ArrowLeft size={15} />
+                Ajustar
+              </Button>
+              <Button
+                busy={disabled}
+                disabled={
+                  !flow.preview?.rows.length ||
+                  flow.preview.blocking ||
+                  (flow.preview.invalid > 0 && !flow.allowPartial)
+                }
+                onClick={() => void flow.commit()}
+              >
+                Importar {flow.preview?.rows.length ?? 0} movimentos
+                <ArrowRight size={16} />
               </Button>
             </div>
           )}
-        </>
-      )}
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        </footer>
       )}
     </div>
   );

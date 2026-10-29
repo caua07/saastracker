@@ -258,7 +258,7 @@ export function recordedSpend(
       !t.date.startsWith(month) ||
       t.pending ||
       !t.subscriptionId ||
-      ["transfer", "invoice_payment"].includes(t.kind)
+      ["transfer", "invoice_payment", "income"].includes(t.kind)
     )
       continue;
     const v = convert(t.amount, t.currency, workspace.preferences);

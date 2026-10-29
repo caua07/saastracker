@@ -1,0 +1,16 @@
+Extrato de conta — EXEMPLO SINTÉTICO
+Cliente: PESSOA FICTÍCIA
+Período: 01/08/2026 a 31/10/2026
+
+Data Lançamento;Histórico;Descrição;Valor (R$);Saldo (R$)
+10/08/2026;Compra no débito;GITHUB INC;-29,90;970,10
+10/09/2026;Compra no débito;GITHUB INC;-29,90;940,20
+10/10/2026;Compra no débito;GITHUB INC;-29,90;910,30
+12/10/2026;Crédito em conta;Recebimento de exemplo;1.234,56;2.144,86
+13/10/2026;Estorno de compra;GITHUB INC;29,90;2.174,76
+14/10/2026;Compra no débito;"Serviço; com ""aspas""";-15,50;2.159,26
+15/10/2026;Compra no débito;"Serviço com
+descrição em duas linhas";-5,00;2.154,26
+16/10/2026;Sem movimentação;Registro zero;0,00;2.154,26
+31/02/2026;Compra no débito;Data incorreta;-12,00;2.142,26
+Saldo final;;;;2.154,26

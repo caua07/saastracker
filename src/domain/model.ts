@@ -65,6 +65,7 @@ export const transactionSchema = z
     kind: z.enum([
       "expense",
       "refund",
+      "income",
       "transfer",
       "invoice_payment",
       "installment",

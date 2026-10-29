@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 import type { Cycle, Transaction, Workspace } from "./model";
 import { services } from "./catalog";
 import { dayDiff, occurrence } from "./finance";
-import { normalizeDescription } from "./imports";
+import { normalizeDescription } from "./transactions";
 
 export type Candidate = {
   key: string;

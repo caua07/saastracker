@@ -62,6 +62,16 @@ Não há worker permanente nem cron obrigatório. Exemplo **opcional** de agenda
 
 Defina `CRON_SECRET` no host; o endpoint exige `Authorization: Bearer ...`. O job processa no máximo uma conexão por chamada para respeitar a janela serverless. Para este uso pessoal, mantenha **uma instituição automatizada prioritária**; outras ficam sob demanda. Não há promessa de tempo real, retry externo automático ou sync horário. Sem `CRON_SECRET`, o endpoint recusa chamadas. O `vercel.json` incluído não agenda nenhuma operação.
 
+## Importação CSV de extrato da conta
+
+Em **Conexões → Importar CSV**, selecione ou arraste um arquivo, confira a conta e os exemplos de leitura, depois revise e confirme os movimentos. O fluxo reconhece tabelas compatíveis com o extrato da conta Inter, inclusive com informações antes do cabeçalho e colunas de saldo; outros cabeçalhos podem ser mapeados em **Ajustar leitura**. CSV não tem um formato bancário universal.
+
+A leitura aceita UTF-8, Windows-1252 e UTF-16 com BOM, separadores comuns e campos entre aspas. Valores e totais usam decimal exato. Saldo não é movimento, entrada não é automaticamente estorno e moedas diferentes não são somadas sem conversão. Limites: 10 MB e 20 mil registros por arquivo.
+
+Todas as linhas podem ser consultadas por busca/filtros e paginação. Erros isolados exigem aceite para importar só as válidas; estrutura inválida bloqueia o lote. Você pode retirar movimentos individualmente. O arquivo original não é enviado ao servidor. Importações parciais podem ser retomadas; use sempre o mesmo nome de conta. Sem ID bancário, a conciliação por conteúdo e multiplicidade tem ambiguidades e não une automaticamente CSV com Open Finance.
+
+Arquitetura, problemas encontrados, decisões e evidências: [plano da importação](docs/csv-import-plan.md). Fixtures são sintéticos; nenhum CSV real do proprietário foi validado nesta revisão.
+
 ## Falha ao iniciar login Google
 
 O login grava um estado temporário em `auth_verification` antes de redirecionar para o Google. Se a conexão com o banco falhar, a autenticação não chega ao provedor. No incidente de 29/10/2026, os logs de produção mostraram `ENOTFOUND` com hostname `base`: a `DATABASE_URL` da Vercel estava incorreta, apesar de a conexão local Neon funcionar.

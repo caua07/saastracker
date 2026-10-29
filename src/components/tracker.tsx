@@ -72,6 +72,8 @@ import {
 import { SubscriptionForm } from "./subscription-form";
 import { SettingsPanel } from "./settings-panel";
 import { ImportPanel } from "./import-panel";
+import { ImportDialog } from "./import-dialog";
+import { transactionKindLabels } from "@/domain/transactions";
 
 export type View =
   | "overview"
@@ -215,6 +217,10 @@ export function Tracker({
       saving.current = true;
       setBusy(true);
       try {
+        if (next.version !== previous.version)
+          throw new Error(
+            "Os dados mudaram durante a revisão. Recarregue antes de salvar para preservar as alterações.",
+          );
         const validated = workspaceSchema.parse({
           ...next,
           version: previous.version,
@@ -1319,16 +1325,7 @@ export function Tracker({
                         <div>
                           <strong>{t.description}</strong>
                           <span>
-                            {t.account} ·{" "}
-                            {t.kind === "invoice_payment"
-                              ? "Pagamento de fatura"
-                              : t.kind === "transfer"
-                                ? "Transferência"
-                                : t.kind === "installment"
-                                  ? "Parcela"
-                                  : t.kind === "refund"
-                                    ? "Crédito / estorno"
-                                    : "Compra"}
+                            {t.account} · {transactionKindLabels[t.kind]}
                             {t.pending ? " · Pendente" : ""}
                           </span>
                         </div>
@@ -1606,18 +1603,29 @@ export function Tracker({
           <SettingsPanel workspace={data} onCommit={commit} busy={busy} />
         )}
       </Sheet>
-      <Sheet
+      <ImportDialog
         open={importOpen}
         onClose={() => {
           if (!busy) setImportOpen(false);
         }}
-        title="Importar extrato"
-        description="Confira os dados antes de trazê-los para o seu espaço."
+        busy={busy}
       >
         {importOpen && (
-          <ImportPanel workspace={data} onCommit={commit} busy={busy} />
+          <ImportPanel
+            workspace={data}
+            onCommit={commit}
+            busy={busy}
+            onDiscover={() => {
+              setImportOpen(false);
+              navigate("discovery");
+            }}
+            onMovements={() => {
+              setImportOpen(false);
+              navigate("transactions");
+            }}
+          />
         )}
-      </Sheet>
+      </ImportDialog>
       <Sheet
         open={info}
         onClose={() => setInfo(false)}
