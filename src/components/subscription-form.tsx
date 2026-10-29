@@ -38,13 +38,16 @@ export function SubscriptionForm({
   const [currency, setCurrency] = useState<Currency>(
     initial?.currency ?? candidate?.currency ?? "BRL",
   );
-  const [cycle, setCycle] = useState<Cycle>(
-    initial?.cycle ?? candidate?.cycle ?? "monthly",
+  const [cycle, setCycle] = useState<Cycle | "">(
+    initial?.cycle ?? candidate?.cycle ?? (candidate ? "" : "monthly"),
   );
   const [category, setCategory] = useState(
     initial?.category ?? candidate?.category ?? "Outros",
   );
-  const [anchorDate, setAnchorDate] = useState(initial?.anchorDate ?? today());
+  const [anchorDate, setAnchorDate] = useState(
+    initial?.anchorDate ??
+      (candidate?.basis === "recognized_service" ? "" : today()),
+  );
   const [startDate, setStartDate] = useState(initial?.startDate ?? today());
   const [status, setStatus] = useState<Subscription["status"]>(
     initial?.status ?? "active",
@@ -74,6 +77,10 @@ export function SubscriptionForm({
           if (Number(parsedAmount) < 0) throw new Error();
         } catch {
           setError("Informe um valor positivo, como 29,90.");
+          return;
+        }
+        if (!cycle) {
+          setError("Confirme a frequência do plano antes de salvar.");
           return;
         }
         const now = new Date().toISOString();
@@ -181,9 +188,13 @@ export function SubscriptionForm({
         <label className="field">
           Frequência
           <select
+            required
             value={cycle}
             onChange={(e) => setCycle(e.target.value as Cycle)}
           >
+            <option value="" disabled>
+              Confira a frequência do plano
+            </option>
             {Object.entries(cycleLabels).map(([key, value]) => (
               <option key={key} value={key}>
                 {value}

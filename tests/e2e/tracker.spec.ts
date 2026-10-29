@@ -573,3 +573,135 @@ test("seleções concorrentes mantêm o arquivo mais recente e CSV fatal bloquei
     (await (await page.request.get("/api/workspace")).json()).transactions,
   ).toHaveLength(0);
 });
+
+test("Descoberta mostra Spotify isolado como possível e recusa falsos padrões de compras", async ({
+  page,
+}) => {
+  await signIn(page);
+  await reset(page);
+  await page.getByRole("button", { name: "Conexões", exact: true }).click();
+  await page.getByRole("button", { name: "Importar CSV", exact: true }).click();
+  const csv = [
+    "Data;Histórico;Descrição;Valor;Saldo",
+    "29/09/2026;Compra no débito;Loja de exemplo;-35,00;1000,00",
+    "01/10/2026;Compra no débito;SPOTIFY;-29,90;970,10",
+    "08/10/2026;Compra no débito;Café de exemplo;-20,00;950,10",
+    "21/10/2026;Compra no débito;Café de exemplo;-20,00;930,10",
+    "27/10/2026;Compra no débito;Loja de exemplo;-85,00;845,10",
+    "28/10/2026;Pagamento de fatura;Cartão de exemplo;-400,00;445,10",
+  ].join("\n");
+  await page
+    .getByRole("dialog")
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "conta-sintetica.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv),
+    });
+  await page.getByRole("button", { name: "Conferir prévia" }).click();
+  await page
+    .getByRole("button", { name: "Importar 6 movimentos", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Extrato importado", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Revisar assinaturas", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Descoberta", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Padrões recorrentes 0", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Possíveis assinaturas 1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("6 movimentos · janela observada de 30 dias"),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Esse total não revela os serviços pagos no cartão/),
+  ).toBeVisible();
+  const candidate = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "Spotify", exact: true }),
+  });
+  await expect(candidate).toHaveCount(1);
+  await expect(candidate).toContainText("última cobrança encontrada");
+  await expect(candidate).toContainText("Frequência a confirmar");
+  await expect(candidate).not.toContainText("Mensal");
+  await expect(page.locator(".candidate")).toHaveCount(1);
+  expect(
+    (await (await page.request.get("/api/workspace")).json()).subscriptions,
+  ).toHaveLength(0);
+  await mkdir(".impeccable/review/discovery", { recursive: true });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: ".impeccable/review/discovery/desktop.png",
+    fullPage: true,
+  });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".sidebar")).toHaveCSS(
+    "transform",
+    "matrix(1, 0, 0, 1, -225, 0)",
+  );
+  await expect(page.locator(".main-shell")).toHaveCSS("margin-left", "0px");
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: ".impeccable/review/discovery/mobile.png",
+    fullPage: true,
+  });
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await candidate
+    .getByRole("button", { name: "Revisar possível assinatura", exact: true })
+    .click();
+  const form = page.getByRole("dialog");
+  await expect(
+    form.getByRole("combobox", { name: "Frequência", exact: true }),
+  ).toHaveValue("");
+  await expect(
+    form.getByLabel("Próxima cobrança", { exact: true }),
+  ).toHaveValue("");
+  await form
+    .getByRole("combobox", { name: "Frequência", exact: true })
+    .selectOption("monthly");
+  await form.getByLabel("Próxima cobrança", { exact: true }).fill("2026-11-01");
+  await form
+    .getByRole("button", { name: "Confirmar assinatura", exact: true })
+    .click();
+  await expect(form).toBeHidden();
+  const w = await (await page.request.get("/api/workspace")).json();
+  expect(w.subscriptions).toHaveLength(1);
+  expect(w.subscriptions[0]).toMatchObject({
+    name: "Spotify",
+    cycle: "monthly",
+    anchorDate: "2026-11-01",
+    amount: "29.9",
+  });
+  expect(
+    w.transactions.filter(
+      (t: { subscriptionId: string | null }) => !!t.subscriptionId,
+    ),
+  ).toHaveLength(1);
+  await page.reload();
+  await expect(page.locator(".candidate")).toHaveCount(0);
+});

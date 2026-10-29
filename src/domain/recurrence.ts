@@ -1,8 +1,9 @@
 import Decimal from "decimal.js";
 import type { Cycle, Transaction, Workspace } from "./model";
-import { services } from "./catalog";
-import { dayDiff, occurrence } from "./finance";
-import { normalizeDescription } from "./transactions";
+import { dayDiff } from "./finance";
+import { merchantFor } from "./discovery/merchants";
+import { findCadence } from "./discovery/cadence";
+export { merchantFor } from "./discovery/merchants";
 
 export type Candidate = {
   key: string;
@@ -10,7 +11,8 @@ export type Candidate = {
   service: string;
   category: string;
   currency: "BRL" | "USD";
-  cycle: Cycle;
+  cycle: Cycle | null;
+  basis: "recurrence" | "recognized_service";
   amount: string;
   score: number;
   confidence: "high" | "medium" | "low";
@@ -19,157 +21,170 @@ export type Candidate = {
   reasons: string[];
   variable: boolean;
 };
-export function merchantFor(description: string) {
-  const normalized = normalizeDescription(description);
-  const aliases: Record<string, RegExp> = {
-    openai: /\b(openai|chatgpt)\b/,
-    anthropic: /\b(anthropic|claude)\b/,
-    google: /google\s*(one|storage)/,
+export type DiscoveryReport = {
+  candidates: Candidate[];
+  recurring: Candidate[];
+  possible: Candidate[];
+  coverage: {
+    count: number;
+    eligible: number;
+    from: string | null;
+    to: string | null;
+    days: number;
+    invoicePayments: number;
+    excluded: number;
+    unknown: number;
   };
-  const service = services.find((s) =>
-    (aliases[s.id] ?? new RegExp(`\\b${s.id}\\b`)).test(normalized),
-  );
-  return service
-    ? {
-        key: service.id,
-        name: service.name,
-        service: service.id,
-        category: service.category,
-        known: true,
-      }
-    : {
-        key: normalized
-          .replace(/^(compra|cartao|cartão|purchase|debit)\s+/g, "")
-          .replace(/\*\d{3,}$/, ""),
-        name: description.trim(),
-        service: "",
-        category: "Outros",
-        known: false,
-      };
+};
+function evidenceHash(rows: Transaction[]) {
+  const legacy = rows.map((t) => `${t.id}:${t.date}:${t.amount}`).join(";");
+  if (legacy.length <= 5000) return legacy;
+  // Review fingerprint only, not a security token. Bound the persisted decision size.
+  let a = 2166136261,
+    b = 5381;
+  for (let i = 0; i < legacy.length; i++) {
+    a = Math.imul(a ^ legacy.charCodeAt(i), 16777619);
+    b = Math.imul(b, 33) ^ legacy.charCodeAt(i);
+  }
+  return `v2:${rows.length}:${(a >>> 0).toString(16)}:${(b >>> 0).toString(16)}`;
 }
-export function detectRecurrences(workspace: Workspace): Candidate[] {
+export function analyzeDiscovery(workspace: Workspace): DiscoveryReport {
   const groups = new Map<string, Transaction[]>();
+  let eligible = 0,
+    unknown = 0;
+  const dates = workspace.transactions.map((t) => t.date).sort();
   for (const t of workspace.transactions) {
     if (
       t.kind !== "expense" ||
       t.direction !== "debit" ||
       t.pending ||
-      t.subscriptionId
+      t.subscriptionId ||
+      new Decimal(t.amount).lte(0)
     )
       continue;
+    eligible++;
     const merchant = merchantFor(t.description);
-    const key = [t.account, merchant.key, t.currency].join("|");
-    groups.set(key, [...(groups.get(key) ?? []), t]);
-  }
-  const result: Candidate[] = [];
-  for (const [key, unsorted] of groups) {
-    const rows = unsorted.sort((a, b) => a.date.localeCompare(b.date));
-    if (rows.length < 2) continue;
-    const merchant = merchantFor(rows[0].description);
-    const models: {
-      cycle: Cycle;
-      tolerance: number;
-      fit: number;
-      unique: Transaction[];
-    }[] = [];
-    for (const [cycle, tolerance] of [
-      ["weekly", 2],
-      ["monthly", 4],
-      ["quarterly", 7],
-      ["yearly", 14],
-    ] as const) {
-      const periods = new Map<number, Transaction>();
-      for (const row of rows) {
-        let best = Infinity,
-          bestN = 0;
-        for (let n = 0; n < Math.min(600, rows.length * 60); n++) {
-          const expected = occurrence(rows[0].date, cycle, n);
-          const delta = Math.abs(dayDiff(row.date, expected));
-          if (delta < best) {
-            best = delta;
-            bestN = n;
-          }
-          if (expected > row.date && delta > tolerance) break;
-        }
-        if (best <= tolerance && !periods.has(bestN)) periods.set(bestN, row);
-      }
-      const max = Math.max(...periods.keys());
-      const fit = periods.size / Math.max(rows.length, max + 1);
-      models.push({ cycle, tolerance, fit, unique: [...periods.values()] });
+    if (!merchant.identifiable) {
+      unknown++;
+      continue;
     }
-    models.sort((a, b) => b.fit - a.fit);
-    const model = models[0];
-    if (model.unique.length < 2 || model.fit < 0.6) continue;
-    const values = model.unique
-      .map((t) => new Decimal(t.amount))
-      .sort((a, b) => a.cmp(b));
-    const median = values[Math.floor(values.length / 2)];
-    const variation = values.reduce(
-      (max, value) => Decimal.max(max, value.sub(median).abs().div(median)),
-      new Decimal(0),
+    const key = [t.account, merchant.key, t.currency].join("|");
+    const rows = groups.get(key) ?? [];
+    rows.push(t);
+    groups.set(key, rows);
+  }
+  const candidates: Candidate[] = [];
+  for (const [key, unsorted] of groups) {
+    const rows = [...unsorted].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
     );
-    const variable = variation.gt(0.2);
-    const identity = merchant.known ? 25 : 20;
-    const cadence = model.unique.length >= 3 && model.fit >= 0.8 ? 30 : 20;
-    const support =
-      model.unique.length >= 4 ? 15 : model.unique.length === 3 ? 10 : 5;
-    const valueScore = variation.lte(0.05) ? 15 : variation.lte(0.2) ? 8 : 0;
-    const ambiguous = models[1].fit >= model.fit - 0.05;
-    let score =
-      identity +
-      cadence +
-      support +
-      valueScore +
-      (merchant.known ? 8 : 0) -
-      (ambiguous ? 15 : 0);
-    score = Math.max(0, Math.min(100, score));
-    const enough = model.cycle === "yearly" ? false : model.unique.length >= 3;
+    const merchant = merchantFor(rows[0].description),
+      model = findCadence(rows, merchant.known);
+    if (!model && !merchant.known) continue;
+    const basis = model ? "recurrence" : "recognized_service";
+    const evidence = model?.evidence ?? rows;
+    const hash = evidenceHash(evidence);
+    if (
+      workspace.decisions.some((d) => d.key === key && d.evidenceHash === hash)
+    )
+      continue;
+    const variable = model
+      ? model.variation.gt(0.2)
+      : new Set(rows.map((t) => new Decimal(t.amount).toFixed())).size > 1;
+    const score = model
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            (merchant.known ? 35 : 20) +
+              Math.round(model.fit * 25) +
+              (evidence.length >= 3 ? 15 : 5) +
+              (model.variation.lte(0.05)
+                ? 15
+                : model.variation.lte(0.2)
+                  ? 8
+                  : 0) -
+              (model.ambiguous ? 15 : 0),
+          ),
+        )
+      : 30;
     const confidence =
-      score >= 80 && enough && !ambiguous
+      model &&
+      score >= 80 &&
+      model.fit >= 0.85 &&
+      evidence.length >= 3 &&
+      !model.ambiguous &&
+      model.cycle !== "yearly"
         ? "high"
-        : score >= 60
+        : model && score >= 60
           ? "medium"
           : "low";
-    const evidenceHash = model.unique
-      .map((t) => `${t.id}:${t.date}:${t.amount}`)
-      .join(";");
-    if (
-      workspace.decisions.some(
-        (d) => d.key === key && d.evidenceHash === evidenceHash,
-      )
-    )
-      continue;
-    const reasons = [
-      `${model.unique.length} cobranças em períodos distintos`,
-      `${Math.round(model.fit * 100)}% de aderência ao calendário`,
-      variable
-        ? "Valor variável; confirme o modelo de cobrança"
-        : variation.isZero()
-          ? "Mesmo valor em todas as cobranças"
-          : "Valores próximos na moeda original",
-      merchant.known
-        ? "Serviço reconhecido pelo catálogo"
-        : "Descrição semelhante; estabelecimento precisa de revisão",
-    ];
-    if (ambiguous)
-      reasons.push("Mais de um ciclo plausível; confirme a frequência.");
-    if (model.cycle === "yearly")
-      reasons.push("Recorrência anual exige confirmação documental ou manual.");
-    result.push({
+    const reasons = model
+      ? [
+          `${evidence.length} cobranças em períodos distintos`,
+          `${Math.round(model.fit * 100)}% dos períodos esperados têm uma cobrança`,
+          variable
+            ? "Valor variável; confira se há cobrança por uso"
+            : model.variation.isZero()
+              ? "Mesmo valor nas cobranças usadas"
+              : "Valores próximos na moeda original",
+          merchant.known
+            ? "Serviço reconhecido pelo catálogo"
+            : "Estabelecimento desconhecido: o padrão não comprova uma assinatura",
+          ...(model.ambiguous
+            ? ["Mais de um ciclo plausível; confirme a frequência."]
+            : []),
+          ...(model.cycle === "yearly"
+            ? ["Recorrência anual exige confirmação documental ou manual."]
+            : []),
+        ]
+      : [
+          "Serviço reconhecido pela descrição do movimento",
+          `${evidence.length} ${evidence.length === 1 ? "cobrança encontrada; pode ser uma compra avulsa" : "cobranças encontradas, sem calendário consistente"}`,
+          "Frequência não identificada; confirme o plano e a próxima cobrança",
+        ];
+    candidates.push({
       key,
       name: merchant.name,
       service: merchant.service,
       category: merchant.category,
       currency: rows[0].currency,
-      cycle: model.cycle,
-      amount: median.toFixed(),
+      cycle: model?.cycle ?? null,
+      basis,
+      amount: model?.amount ?? rows.at(-1)!.amount,
       score,
       confidence,
-      evidence: model.unique,
-      evidenceHash,
+      evidence,
+      evidenceHash: hash,
       reasons,
       variable,
     });
   }
-  return result.sort((a, b) => b.score - a.score);
+  candidates.sort(
+    (a, b) =>
+      Number(b.basis === "recurrence") - Number(a.basis === "recurrence") ||
+      b.score - a.score ||
+      a.name.localeCompare(b.name),
+  );
+  return {
+    candidates,
+    recurring: candidates.filter((c) => c.basis === "recurrence"),
+    possible: candidates.filter((c) => c.basis === "recognized_service"),
+    coverage: {
+      count: dates.length,
+      eligible,
+      from: dates[0] ?? null,
+      to: dates.at(-1) ?? null,
+      days: dates.length ? dayDiff(dates.at(-1)!, dates[0]) + 1 : 0,
+      invoicePayments: workspace.transactions.filter(
+        (t) => t.kind === "invoice_payment",
+      ).length,
+      excluded: dates.length - eligible,
+      unknown,
+    },
+  };
+}
+/** Backwards-compatible strict-pattern API; UI uses the full discovery report. */
+export function detectRecurrences(workspace: Workspace): Candidate[] {
+  return analyzeDiscovery(workspace).recurring;
 }

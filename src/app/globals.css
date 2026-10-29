@@ -2304,7 +2304,7 @@ small {
   animation: toast-in 0.25s var(--ease);
 }
 .toast > svg {
-  color: #66728a;
+  color: inherit;
 }
 .toast > span {
   flex: 1;
@@ -2313,12 +2313,12 @@ small {
 .toast > button:not(.icon-button) {
   font-size: 11px;
   font-weight: 750;
-  color: #66728a;
+  color: inherit;
   white-space: nowrap;
   padding: 4px;
 }
 .toast > .icon-button {
-  color: #66728a;
+  color: inherit;
   width: 23px;
   height: 23px;
 }

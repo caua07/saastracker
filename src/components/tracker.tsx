@@ -18,7 +18,6 @@ import {
   MoreHorizontal,
   Bell,
   Check,
-  CheckCheck,
   X,
   Menu,
   ArrowDownToLine,
@@ -59,7 +58,8 @@ import {
   dayDiff,
   effectiveStatus,
 } from "@/domain/finance";
-import { detectRecurrences, type Candidate } from "@/domain/recurrence";
+import { analyzeDiscovery, type Candidate } from "@/domain/recurrence";
+import { DiscoveryPanel } from "./discovery-panel";
 import { BrandMark, ServiceLogo } from "./brand";
 import { Button, IconButton, Sheet, EmptyState, Confirm } from "./ui";
 import {
@@ -152,7 +152,8 @@ export function Tracker({
     [syncing, setSyncing] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const stats = overview(data);
-  const candidates = useMemo(() => detectRecurrences(data), [data]);
+  const discovery = useMemo(() => analyzeDiscovery(data), [data]);
+  const candidates = discovery.candidates;
   const selected = data.subscriptions.find((s) => s.id === detail);
   const displayName =
     data.preferences.displayName || ownerName.split(" ")[0] || "Você";
@@ -971,170 +972,22 @@ export function Tracker({
             <AgendaView workspace={data} onOpen={(s) => setDetail(s.id)} />
           )}
           {view === "discovery" && (
-            <>
-              <div className="discovery-intro">
-                <ScanSearch size={22} />
-                <div>
-                  <h2>Uma sugestão, com evidências.</h2>
-                  <p>
-                    O motor procura padrões em movimentos importados. A
-                    confirmação final é sempre sua; confiança não é
-                    probabilidade.
-                  </p>
-                </div>
-                <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <FileUp size={16} />
-                  Importar extrato
-                </Button>
-              </div>
-              {candidates.length ? (
-                <div className="candidate-list">
-                  {candidates.map((c) => (
-                    <article key={c.key} className="panel candidate">
-                      <div className="candidate-head">
-                        <ServiceLogo service={c.service} name={c.name} />
-                        <div>
-                          <h2>{c.name}</h2>
-                          <p>
-                            {money(c.amount, c.currency)} ·{" "}
-                            {cycleLabels[c.cycle]}
-                          </p>
-                        </div>
-                        <span
-                          className={`confidence confidence-${c.confidence}`}
-                        >
-                          {c.confidence === "high"
-                            ? "Alta confiança"
-                            : c.confidence === "medium"
-                              ? "Confiança média"
-                              : "Mais evidências"}
-                          <span>{c.score}/100</span>
-                        </span>
-                      </div>
-                      <div className="evidence-reasons">
-                        {c.reasons.map((reason) => (
-                          <span key={reason}>
-                            <CheckCircle2 size={14} />
-                            {reason}
-                          </span>
-                        ))}
-                      </div>
-                      <details className="evidence-details">
-                        <summary>
-                          Ver {c.evidence.length} cobranças usadas{" "}
-                          <ChevronDown size={15} />
-                        </summary>
-                        <div>
-                          {c.evidence.map((t) => (
-                            <div key={t.id}>
-                              <span>
-                                {dateLabel(t.date, true)}
-                                <small>{t.account}</small>
-                              </span>
-                              <span>{t.description}</span>
-                              <strong>{money(t.amount, t.currency)}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                      <div className="candidate-actions">
-                        <Button
-                          disabled={busy}
-                          onClick={() => setForm({ candidate: c })}
-                        >
-                          <Check size={16} />
-                          Confirmar assinatura
-                        </Button>
-                        {data.subscriptions.length > 0 && (
-                          <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                              <Button variant="secondary" disabled={busy}>
-                                Vincular a existente <ChevronDown size={14} />
-                              </Button>
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Portal>
-                              <DropdownMenu.Content
-                                className="dropdown-menu"
-                                sideOffset={5}
-                              >
-                                {data.subscriptions.map((s) => (
-                                  <DropdownMenu.Item
-                                    key={s.id}
-                                    onSelect={() =>
-                                      void reviewCandidate(c, "rejected", s.id)
-                                    }
-                                  >
-                                    {s.name}
-                                  </DropdownMenu.Item>
-                                ))}
-                              </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                          </DropdownMenu.Root>
-                        )}
-                        <Button
-                          variant="ghost"
-                          disabled={busy}
-                          onClick={() => void reviewCandidate(c, "snoozed")}
-                        >
-                          Adiar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={busy}
-                          onClick={() => void reviewCandidate(c, "rejected")}
-                        >
-                          Descartar
-                        </Button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="panel">
-                  <EmptyState
-                    icon={<ScanSearch size={30} />}
-                    heading={
-                      data.transactions.length
-                        ? "Nenhuma sugestão pendente"
-                        : "Vamos encontrar seus padrões"
-                    }
-                    action={
-                      <Button
-                        variant="secondary"
-                        onClick={() => setImportOpen(true)}
-                      >
-                        <FileUp size={16} />
-                        Importar extrato CSV
-                      </Button>
-                    }
-                  >
-                    {data.transactions.length
-                      ? "Novas evidências podem gerar novas sugestões. Cobranças já vinculadas, parcelas e pagamentos de fatura ficam fora da fila."
-                      : "Importe um extrato com alguns meses de movimentos. As possíveis assinaturas vão aparecer aqui com as evidências para você revisar."}
-                  </EmptyState>
-                </div>
-              )}
-              {data.decisions.length > 0 && (
-                <div className="review-history">
-                  <span>
-                    <CheckCheck size={16} />
-                    {data.decisions.length} sugestões revisadas
-                  </span>
-                  <Button
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() =>
-                      void commit(
-                        { ...data, decisions: [] },
-                        "Revisões limpas; sugestões elegíveis voltam a aparecer",
-                      )
-                    }
-                  >
-                    Reabrir revisões
-                  </Button>
-                </div>
-              )}
-            </>
+            <DiscoveryPanel
+              report={discovery}
+              workspace={data}
+              busy={busy}
+              onImport={() => setImportOpen(true)}
+              onConfirm={(candidate) => setForm({ candidate })}
+              onReview={(candidate, status, subscriptionId) =>
+                void reviewCandidate(candidate, status, subscriptionId)
+              }
+              onReset={() =>
+                void commit(
+                  { ...data, decisions: [] },
+                  "Revisões limpas; sugestões elegíveis voltam a aparecer",
+                )
+              }
+            />
           )}
           {view === "connections" && (
             <div className="connections-content">
