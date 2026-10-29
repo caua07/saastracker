@@ -8,7 +8,7 @@ Aplicativo exclusivamente pessoal, gratuito e com design como prioridade. Leia `
 - E2E usa banco `saastemics_e2e` e porta 3001, nunca o banco pessoal. Não limpar dados pessoais para rodar teste.
 - Schema em `src/server/db/schema.ts`; `npm run db:generate` cria migration. Revise antes de `npm run db:migrate`. Nunca aplicar migrations de produção sem escopo/autorização correspondente.
 - Segredos ficam em `.env.local`/host; não ler/imprimir tokens ou dados financeiros desnecessariamente. Backups, logs, client props e bundles não podem carregar segredos.
-- Somente o proprietário verificado acessa APIs financeiras; verificar origem e versão em mutações. Mantenha isolamento demo/privado e recusa de login local em produção.
+- Somente o proprietário verificado acessa APIs financeiras; verificar origem e versão em mutações. Não reintroduza demonstração pública; fixtures ficam somente nos testes. Mantenha recusa de login local em produção.
 - Moedas usam decimal exato. Equivalente mensal, projeção e gasto registrado são conceitos diferentes. Ausência de FX/evidência nunca significa zero.
 - Sem SaaS comercial, billing próprio, multi-tenancy, conta paga, upgrade automático ou worker permanente.
 - Integrações reais dependem de credenciais/cobertura. Não representar integração não validada como sincronizada. Não enviar mensagens ou conectar Gmail sem instrução correspondente.

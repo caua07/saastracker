@@ -30,6 +30,15 @@ export function auth() {
     appName: "Saastemics",
     baseURL: process.env.BETTER_AUTH_URL,
     secret: process.env.BETTER_AUTH_SECRET,
+    // Let our route boundary return JSON and sanitize database exceptions.
+    onAPIError: { throw: true },
+    logger: {
+      level: "warn",
+      log: (level) => {
+        if (level === "warn" || level === "error")
+          console.warn("auth_library_event", { level });
+      },
+    },
     database: drizzleAdapter(db(), {
       provider: "pg",
       schema,

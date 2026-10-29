@@ -2,6 +2,8 @@
 
 Seu espaço pessoal para ver assinaturas, entender custos e acompanhar próximas cobranças. Next.js/React, TypeScript, PostgreSQL/Drizzle e Better Auth. Fontes e logos servidos pelo próprio aplicativo; sem API de IA, analytics ou serviço de logos.
 
+**Neon configurado em 29/10/2026:** Postgres e Object Storage privado foram provisionados e testados na branch `production` do projeto `calm-math-74999050`. O frontend ainda precisa ser publicado na Vercel e ter o OAuth Google configurado. Consulte [o registro de setup e validação](docs/neon-setup.md). As credenciais estão somente no `.env.local` ignorado pelo Git; não são incluídas neste documento.
+
 ## Rodar localmente
 
 Requisitos: Node 22+, npm e PostgreSQL 18 instalado ou Docker com Compose. Nenhuma conta cloud é necessária para desenvolver.
@@ -12,11 +14,13 @@ npm run setup:local
 npm run dev
 ```
 
-Abra **http://127.0.0.1:3000** e clique em **Entrar no ambiente local**. O setup cria um banco exclusivamente local na porta 55432, migra as tabelas e gera segredos aleatórios em `.env.local` (ignorado pelo Git). Ele não insere assinaturas de demonstração no seu banco. A demonstração pública em **/demo** tem dados fictícios, isolados e não persistentes.
+Abra **http://127.0.0.1:3000** e clique em **Entrar no ambiente local**. O setup cria um banco exclusivamente local na porta 55432, migra as tabelas e gera segredos aleatórios em `.env.local` (ignorado pelo Git). Ele não insere assinaturas fictícias no seu banco. A demonstração pública foi removida a pedido do proprietário em 29/10/2026; `/demo` retorna 404 e o app exige login. Fixtures sintéticas ficam somente em `tests/support/`.
 
 O setup prefere o PostgreSQL em `/opt/homebrew/opt/postgresql@18/bin`; configure `LOCAL_PG_BIN` para outro caminho. Sem esse binário, utiliza `docker compose up -d --wait`. O PostgreSQL de desenvolvimento aceita conexões locais sem senha e fica vinculado a `127.0.0.1`; **não use esse modo em produção**. Não coloque o servidor de desenvolvimento na internet.
 
 O script recusa substituir uma configuração que aponte para banco externo ou outra porta/usuário. Em um banco configurado manualmente, use `npm run db:migrate` e configure o login Google conforme abaixo.
+
+Neste checkout, `.env.local` agora aponta para o Neon. `setup:local` recusará essa configuração para proteger o banco remoto. Uma cópia protegida da configuração local anterior foi preservada em `.local/neon-setup/env.local.before-neon`; não a restaure por cima de alterações posteriores sem revisar. O servidor de desenvolvimento continua vinculado ao loopback.
 
 ## O que funciona
 
@@ -26,6 +30,7 @@ O script recusa substituir uma configuração que aponte para banco externo ou o
 - BRL/USD, taxa manual com data e subtotais sem conversão quando a taxa estiver ausente.
 - Agenda, avisos in-app e histórico de condições com vigência. Não inventa pagamentos a partir de previsões.
 - Backup JSON, restauração validada e atômica, exportação CSV e exclusão dos dados financeiros. Backup não contém tokens ou credenciais.
+- Backup manual na nuvem: salvar, baixar e excluir uma cópia privada no Neon Object Storage, em Configurações. Cada envio substitui a cópia anterior; restaurar usa o mesmo fluxo validado do arquivo JSON. Excluir os dados financeiros do app não exclui essa cópia independente; use **Excluir cópia**.
 - CSV com mapeamento, formato de data/sinais, prévia, erros por linha, deduplicação com multiplicidade, histórico e desfazer lote.
 - Descoberta determinística: evidências, score explicado, confirmar/editar, vincular a existente, adiar/descartar e reabrir revisões.
 - Adaptador pessoal Meu Pluggy com configuração server-side, paginação v2 validada, staging/checkpoints, consulta retomável e atualização idempotente por chave de origem.
@@ -33,16 +38,18 @@ O script recusa substituir uma configuração que aponte para banco externo ou o
 
 ## Publicar gratuitamente
 
-Proposta de hospedagem: **Vercel Hobby + Neon Free**, dentro de suas franquias. Não há conta, projeto, banco cloud ou deploy criados automaticamente neste repositório.
+Hospedagem proposta: **Vercel Hobby + Neon Free**, dentro de suas franquias. O backend Neon indicado pelo proprietário já foi configurado; o deploy do frontend na Vercel permanece pendente. Os passos abaixo também servem para configurar outro ambiente.
 
 1. Crie um banco no Neon Free. Separe a conexão de migração com permissão de DDL e uma conexão runtime com privilégios somente nas tabelas/sequências da aplicação. O runtime não precisa criar ou alterar tabelas.
 2. Copie `.env.example` para uma configuração local segura ou cadastre as variáveis diretamente no host. Não exponha segredos com prefixo `NEXT_PUBLIC_` e não os coloque no Git.
-3. Defina `DATABASE_URL` para a conexão runtime pooled; use `MIGRATION_DATABASE_URL` para aplicar as migrations com `npm run db:migrate`. A migração não acontece durante um request ou automaticamente no build.
+3. Defina `DATABASE_URL` para a conexão runtime pooled. As migrations usam `MIGRATION_DATABASE_URL` quando definido; caso contrário, `DATABASE_URL_UNPOOLED` fornecido pelo CLI, e por último `DATABASE_URL` para compatibilidade local. No Neon, use sempre a conexão direta para migrar. A migração não acontece durante um request ou automaticamente no build.
 4. Defina `BETTER_AUTH_SECRET` com segredo criptográfico aleatório de pelo menos 32 bytes, `OWNER_EMAIL` com seu e-mail e `BETTER_AUTH_URL` com o endereço HTTPS final. Preserve o segredo para continuar descriptografando tokens OAuth persistidos; rotacione com procedimento controlado.
 5. Crie um cliente OAuth Web no Google e configure `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`. Redirect exato: `https://SEU-DOMINIO/api/auth/callback/google`. O login solicita somente identidade; não solicita leitura de Gmail.
 6. Publique o projeto na Vercel, usando o subdomínio gratuito e o plano Hobby. Deixe `LOCAL_DEV_AUTH=false` e não cadastre `LOCAL_OWNER_PASSWORD` em produção. O login local retorna 404 em produção mesmo se a variável tiver sido definida por engano.
 7. Entre com a conta permitida, confirme os fluxos e, se desejar, fixe também `OWNER_GOOGLE_SUB` ao subject verificado dessa identidade. Cadastro público, senha pública e linking automático de contas estão desabilitados.
 8. Confira quotas de compute/storage, faça um backup e ensaie a restauração. A gratuidade depende das franquias atuais; o aplicativo não ativa upgrades nem serviços pagos.
+
+Para os backups privados, configure também `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3` e `AWS_REGION` no host, usando os valores obtidos pelo `neon deploy`. Nenhum deles pode ter prefixo `NEXT_PUBLIC_`. O bucket `assets` é declarado como privado em `neon.ts`. O app mantém `pg`/Drizzle e usa `attachDatabasePool` quando executado na Vercel Fluid; a verificação completa do certificado TLS é explícita nas conexões Neon.
 
 Não há worker permanente nem cron obrigatório. Exemplo **opcional** de agendamento diário na Vercel, depois que a integração bancária tiver sido validada:
 
@@ -54,6 +61,14 @@ Não há worker permanente nem cron obrigatório. Exemplo **opcional** de agenda
 ```
 
 Defina `CRON_SECRET` no host; o endpoint exige `Authorization: Bearer ...`. O job processa no máximo uma conexão por chamada para respeitar a janela serverless. Para este uso pessoal, mantenha **uma instituição automatizada prioritária**; outras ficam sob demanda. Não há promessa de tempo real, retry externo automático ou sync horário. Sem `CRON_SECRET`, o endpoint recusa chamadas. O `vercel.json` incluído não agenda nenhuma operação.
+
+## Falha ao iniciar login Google
+
+O login grava um estado temporário em `auth_verification` antes de redirecionar para o Google. Se a conexão com o banco falhar, a autenticação não chega ao provedor. No incidente de 29/10/2026, os logs de produção mostraram `ENOTFOUND` com hostname `base`: a `DATABASE_URL` da Vercel estava incorreta, apesar de a conexão local Neon funcionar.
+
+Use a URL pooled completa do Neon em `DATABASE_URL` de **Production**, sem incluir o nome da variável no valor. Alterações de ambiente exigem novo deploy. O callback cadastrado no Google deve corresponder a `BETTER_AUTH_URL` + `/api/auth/callback/google`. Nunca envie a connection string ou o Client Secret em prints/logs.
+
+A rota de autenticação normaliza falhas internas para JSON 503 e registra apenas códigos técnicos permitidos, sem parâmetros SQL/OAuth. A interface trata respostas vazias/HTML e permite repetir a tentativa. Os E2E usam credenciais Google fictícias para testar a construção do redirect e a gravação do estado; não simulam aprovação real da conta no Google.
 
 ## Meu Pluggy
 
@@ -76,6 +91,8 @@ Dados pessoais só são lidos após sessão verificada do proprietário. Mutaç�
 Não há acesso ao Gmail, OFX/PDF/OCR, treinamento de modelos, detecção de uso real dos serviços ou cancelamento remoto. Essas possibilidades continuam fora do escopo implementado. “Pausar”, “cancelar” ou “excluir” aqui altera seu controle pessoal; não muda a cobrança no fornecedor.
 
 Faça uma exportação JSON semanal e antes de alterações grandes. O MVP não promete backup cloud diário nem RPO de 24 h; a última cópia válida define sua recuperação. A restauração substitui dados, solicita confirmação e não restaura credenciais. A cópia exportada fica sob seu controle: proteja e exclua quando necessário.
+
+O backup na nuvem também é manual, sem histórico de versões. A API exige sessão do proprietário e mesma origem em gravação/exclusão. Credenciais S3 ficam no servidor; não há URLs públicas ou nomes de objetos escolhidos pelo cliente. `neon deploy` mantém a infraestrutura; não publica o frontend Next.js.
 
 ## Verificação
 

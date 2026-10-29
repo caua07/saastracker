@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { emptyWorkspace } from "../../src/domain/model";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
+import { sampleWorkspace } from "../support/workspace";
 
 async function signIn(page: Page) {
   await page.goto("/login");
@@ -31,6 +32,67 @@ test("API privada e origem externa recusadas", async ({ page, request }) => {
     ).status(),
   ).toBe(403);
   expect((await page.request.get("/api/cron")).status()).toBe(401);
+});
+test("Google inicia OAuth com estado persistido e bloqueia origem externa", async ({
+  request,
+}) => {
+  const response = await request.post("/api/auth/sign-in/social", {
+    headers: { Origin: "http://127.0.0.1:3001" },
+    data: { provider: "google", callbackURL: "/", disableRedirect: true },
+  });
+  expect(response.status()).toBe(200);
+  const result = await response.json();
+  const url = new URL(result.url);
+  expect(url.hostname).toBe("accounts.google.com");
+  expect(url.searchParams.get("redirect_uri")).toBe(
+    "http://127.0.0.1:3001/api/auth/callback/google",
+  );
+  expect(url.searchParams.get("state")).toBeTruthy();
+  expect(response.headers()["set-cookie"]).toBeTruthy();
+  const blocked = await request.post("/api/auth/sign-in/social", {
+    headers: {
+      Origin: "https://other.example",
+      "Sec-Fetch-Site": "cross-site",
+    },
+    data: { provider: "google", callbackURL: "/", disableRedirect: true },
+  });
+  expect(blocked.status()).toBe(403);
+});
+test("falha vazia do servidor de login mostra mensagem e permite tentar novamente", async ({
+  page,
+}) => {
+  await page.route("**/api/auth/sign-in/social", (route) =>
+    route.fulfill({ status: 500, body: "" }),
+  );
+  await page.goto("/login");
+  const google = page.getByRole("button", {
+    name: "Entrar com Google",
+    exact: true,
+  });
+  await google.click();
+  const failure = page
+    .getByRole("alert")
+    .filter({ hasText: "O servidor de login está indisponível" });
+  await expect(failure).toContainText("O servidor de login está indisponível");
+  await expect(failure).not.toContainText("JSON");
+  await expect(google).toBeEnabled();
+  await mkdir(".impeccable/review/auth-error", { recursive: true });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: ".impeccable/review/auth-error/desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".login-preview")).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".impeccable/review/auth-error/mobile.png",
+    fullPage: true,
+  });
 });
 test("cadastro anual, persistência, edição, backup e concorrência", async ({
   page,
@@ -206,11 +268,40 @@ test("CSV vira sugestão, confirma e não duplica ao reimportar", async ({
     page.getByRole("alert").getByText(/Este arquivo já foi importado/),
   ).toBeVisible();
 });
-test("demo é isolada, mobile sem overflow e acessibilidade", async ({
+test("acesso privado sem demo, mobile sem overflow e acessibilidade", async ({
   page,
 }) => {
-  await page.goto("/demo");
-  await expect(page.getByText(/Demonstração · dados fictícios/)).toBeVisible();
+  expect((await page.request.get("/demo")).status()).toBe(404);
+  await page.goto("/login");
+  await expect(page.locator('a[href="/demo"]')).toHaveCount(0);
+  await expect(page.getByText(/Explorar a demonstração/)).toHaveCount(0);
+  await mkdir(".impeccable/review/no-demo", { recursive: true });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: ".impeccable/review/no-demo/desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".login-preview")).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: ".impeccable/review/no-demo/mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await signIn(page);
+  await reset(page);
+  const current = await (await page.request.get("/api/workspace")).json();
+  const response = await page.request.put("/api/workspace", {
+    data: { ...sampleWorkspace(), version: current.version },
+    headers: { Origin: "http://127.0.0.1:3001" },
+  });
+  expect(response.ok()).toBeTruthy();
+  await page.reload();
   await page
     .getByRole("searchbox", { name: "Buscar assinatura" })
     .fill("Figma");

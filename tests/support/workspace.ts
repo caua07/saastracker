@@ -3,12 +3,12 @@ import {
   type Workspace,
   type Subscription,
   type Cycle,
-} from "./model";
-import { today, addDays, addMonths } from "./finance";
-import { serviceById } from "./catalog";
+} from "../../src/domain/model";
+import { today, addDays, addMonths } from "../../src/domain/finance";
+import { serviceById } from "../../src/domain/catalog";
 
 /** Synthetic fixtures, never seeded into the owner's database. */
-export function demoWorkspace(): Workspace {
+export function sampleWorkspace(): Workspace {
   const day = today(),
     now = new Date().toISOString();
   const w = emptyWorkspace();
@@ -44,8 +44,7 @@ export function demoWorkspace(): Workspace {
         startDate,
         cancelDate: null,
         website: `https://${serviceById(service)!.domain}`,
-        notes:
-          "Dados de demonstração. Valores ilustrativos, não representam uma cotação atual do serviço.",
+        notes: "Dados sintéticos de teste. Valores ilustrativos.",
         history: [{ effectiveFrom: startDate, amount, currency, cycle }],
         createdAt: now,
         updatedAt: now,

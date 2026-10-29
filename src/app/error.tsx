@@ -1,5 +1,6 @@
 "use client";
 import { BrandMark } from "@/components/brand";
+import Link from "next/link";
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
     <main className="error-page">
@@ -12,7 +13,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
       <button className="button button-primary" onClick={reset}>
         Tentar novamente
       </button>
-      <a href="/demo">Explorar a demonstração</a>
+      <Link href="/login">Voltar para o acesso</Link>
     </main>
   );
 }

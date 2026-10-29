@@ -38,10 +38,14 @@ const env = {
   LOCAL_DEV_AUTH: "true",
   LOCAL_OWNER_PASSWORD: password,
   BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
-  GOOGLE_CLIENT_ID: "",
-  GOOGLE_CLIENT_SECRET: "",
+  GOOGLE_CLIENT_ID: "e2e-client.apps.googleusercontent.com",
+  GOOGLE_CLIENT_SECRET: "e2e-only-google-secret",
   PLUGGY_CLIENT_ID: "",
   PLUGGY_CLIENT_SECRET: "",
+  AWS_ACCESS_KEY_ID: "",
+  AWS_SECRET_ACCESS_KEY: "",
+  AWS_ENDPOINT_URL_S3: "",
+  AWS_REGION: "",
 };
 execFileSync(process.execPath, ["--import", "tsx", "scripts/migrate.ts"], {
   env,

@@ -2,15 +2,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-  ArrowUpRight,
-  ShieldCheck,
-  ArrowRight,
-  Layers3,
-  Check,
-} from "lucide-react";
+import { ShieldCheck, ArrowRight, Layers3, Check } from "lucide-react";
 import { BrandMark, ServiceLogo } from "./brand";
 import { Button } from "./ui";
+import { readSignInResponse } from "@/domain/sign-in-response";
 
 export function Login({
   googleReady,
@@ -40,15 +35,13 @@ export function Login({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
-            local ? {} : { provider: "google", callbackURL: "/" },
+            local
+              ? {}
+              : { provider: "google", callbackURL: "/", disableRedirect: true },
           ),
         },
       );
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(
-          result.message ?? result.error ?? "Não foi possível entrar.",
-        );
+      const result = await readSignInResponse(response, !local);
       if (result.url) window.location.assign(result.url);
       else {
         router.replace("/");
@@ -102,13 +95,10 @@ export function Login({
                 <p>
                   O acesso privado precisa do banco, segredo de autenticação e
                   conta do proprietário. As instruções estão no README do
-                  projeto. A demonstração já está disponível abaixo.
+                  projeto.
                 </p>
               </div>
             )}
-            <Link className="demo-link" href="/demo">
-              Explorar a demonstração <ArrowUpRight size={16} />
-            </Link>
           </div>
           {message && (
             <p className="form-error" role="alert">
@@ -165,9 +155,6 @@ export function Login({
                 <Check size={15} />
                 Mais clareza, menos esforço
               </div>
-              <a href="/demo">
-                Conhecer meu novo espaço <ArrowUpRight size={16} />
-              </a>
             </div>
           </div>
         </div>

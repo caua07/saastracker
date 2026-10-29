@@ -31,6 +31,7 @@ Revisão de gastos e renovações; conciliação entre cartões, contas e servi�
 ## Capabilities and Constraints
 
 - Exclusivamente pessoal, sem billing próprio, planos comerciais, multi-tenancy ou preparação para comercialização.
+- Sem opção ou rota pública de demonstração, conforme pedido do proprietário em 29/10/2026. Dados sintéticos são exclusivos dos testes; o app exige autenticação.
 - Hospedagem gratuita como restrição: R$ 0 recorrente dentro dos planos gratuitos; não contratar serviços ou fazer upgrade automático.
 - Entregue: dashboard, lista/grade/detalhe, cadastro/edição, ciclos mensal/anual/trimestral/semanal, BRL/USD, próximas cobranças, pesquisa/filtros, backup/restauração, importação CSV e descoberta determinística.
 - Adaptador Meu Pluggy opcional implementado; validação com instituição real depende de credenciais e cobertura. Gmail, OFX/PDF e alertas externos continuam fora do escopo implementado.

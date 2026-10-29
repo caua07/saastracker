@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validatedNext } from "@/server/integrations/pluggy";
 import { workspaceSchema, backupSchema } from "@/domain/model";
-import { demoWorkspace } from "@/domain/demo";
+import { sampleWorkspace } from "./support/workspace";
 describe("limites de confiança", () => {
   it("recusa URL de paginação em outro host/caminho/conta", () => {
     expect(() =>
@@ -14,7 +14,7 @@ describe("limites de confiança", () => {
     );
   });
   it("backup exige versão e não aceita campos de credencial", () => {
-    const data = demoWorkspace();
+    const data = sampleWorkspace();
     expect(
       backupSchema.safeParse({
         format: "saastemics",
@@ -28,10 +28,10 @@ describe("limites de confiança", () => {
     ).toBe(false);
   });
   it("não aceita link javascript nem IDs repetidos", () => {
-    const data = demoWorkspace();
+    const data = sampleWorkspace();
     data.subscriptions[0].website = "javascript:alert(1)";
     expect(workspaceSchema.safeParse(data).success).toBe(false);
-    const duplicate = demoWorkspace();
+    const duplicate = sampleWorkspace();
     duplicate.subscriptions.push(duplicate.subscriptions[0]);
     expect(workspaceSchema.safeParse(duplicate).success).toBe(false);
   });

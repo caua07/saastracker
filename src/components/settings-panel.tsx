@@ -16,6 +16,7 @@ import {
 import { subscriptionsCsv } from "@/domain/imports";
 import { today } from "@/domain/finance";
 import { Button, Confirm } from "./ui";
+import { CloudBackupPanel } from "./cloud-backup-panel";
 
 export function downloadFile(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -29,7 +30,6 @@ export function SettingsPanel({
   workspace,
   onCommit,
   busy,
-  demo,
 }: {
   workspace: Workspace;
   onCommit: (
@@ -38,7 +38,6 @@ export function SettingsPanel({
     resetConnections?: boolean,
   ) => Promise<boolean>;
   busy: boolean;
-  demo: boolean;
 }) {
   const [prefs, setPrefs] = useState(workspace.preferences),
     [error, setError] = useState(""),
@@ -217,6 +216,7 @@ export function SettingsPanel({
       <input
         ref={file}
         type="file"
+        aria-label="Arquivo de backup para restaurar"
         accept="application/json,.json"
         className="sr-only"
         onChange={async (e) => {
@@ -242,12 +242,12 @@ export function SettingsPanel({
           }
         }}
       />
+      <CloudBackupPanel busy={busy} />
       <div className="privacy-note">
         <ShieldCheck size={19} />
         <p>
-          {demo
-            ? "Esta demonstração contém apenas dados fictícios e não acessa seu banco."
-            : "Seus dados são privados. A exportação não contém credenciais nem tokens de acesso."}
+          Seus dados são privados. A exportação não contém credenciais nem
+          tokens de acesso.
         </p>
       </div>
       <div className="settings-divider" />

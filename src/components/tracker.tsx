@@ -112,12 +112,10 @@ const statusLabels: Record<Subscription["status"], string> = {
 export function Tracker({
   initialData,
   initialView = "overview",
-  demo = false,
   ownerName = "Você",
 }: {
   initialData: Workspace;
   initialView?: View;
-  demo?: boolean;
   ownerName?: string;
 }) {
   const [data, setData] = useState(initialData),
@@ -159,18 +157,15 @@ export function Tracker({
   const notifications = stats.upcoming.filter(
     (e) => dayDiff(e.date, today()) <= data.preferences.reminderDays,
   );
-  const navigate = useCallback(
-    (next: View) => {
-      setView(next);
-      setMobileOpen(false);
-      window.history.pushState(
-        {},
-        "",
-        `${demo ? "/demo" : "/"}${next === "overview" ? "" : `?view=${next}`}`,
-      );
-    },
-    [demo],
-  );
+  const navigate = useCallback((next: View) => {
+    setView(next);
+    setMobileOpen(false);
+    window.history.pushState(
+      {},
+      "",
+      `/${next === "overview" ? "" : `?view=${next}`}`,
+    );
+  }, []);
   useEffect(() => {
     const back = () => {
       const v = new URLSearchParams(window.location.search).get("view") as View;
@@ -196,7 +191,7 @@ export function Tracker({
     return () => clearTimeout(timeout);
   }, [toast]);
   useEffect(() => {
-    if (demo || view !== "connections") return;
+    if (view !== "connections") return;
     let mounted = true;
     fetch("/api/pluggy")
       .then((r) => (r.ok ? r.json() : null))
@@ -207,7 +202,7 @@ export function Tracker({
     return () => {
       mounted = false;
     };
-  }, [view, demo]);
+  }, [view]);
 
   const commit = useCallback(
     async (
@@ -224,21 +219,18 @@ export function Tracker({
           ...next,
           version: previous.version,
         });
-        let version = previous.version + 1;
-        if (!demo) {
-          const response = await fetch("/api/workspace", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              ...(resetConnections ? { "X-Reset-Connections": "true" } : {}),
-            },
-            body: JSON.stringify(validated),
-          });
-          const result = await response.json();
-          if (!response.ok)
-            throw new Error(result.error ?? "Não foi possível salvar.");
-          version = result.version;
-        }
+        const response = await fetch("/api/workspace", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(resetConnections ? { "X-Reset-Connections": "true" } : {}),
+          },
+          body: JSON.stringify(validated),
+        });
+        const result = await response.json();
+        if (!response.ok)
+          throw new Error(result.error ?? "Não foi possível salvar.");
+        const version = result.version;
         const updated = { ...validated, version };
         dataRef.current = updated;
         setData(updated);
@@ -258,7 +250,7 @@ export function Tracker({
         setBusy(false);
       }
     },
-    [demo],
+    [],
   );
 
   async function saveSubscription(subscription: Subscription) {
@@ -361,14 +353,6 @@ export function Tracker({
     );
   }
   async function syncBank() {
-    if (demo) {
-      setToast({
-        message:
-          "A demonstração não conecta contas reais. Entre no seu espaço para configurar.",
-        error: true,
-      });
-      return;
-    }
     setSyncing(true);
     setBankProgress("Consultando a fonte...");
     try {
@@ -766,7 +750,7 @@ export function Tracker({
   );
 
   return (
-    <div className={`app-shell ${demo ? "demo-mode" : ""}`}>
+    <div className="app-shell">
       <a className="skip-link" href="#main-content">
         Pular para o conteúdo
       </a>
@@ -781,7 +765,7 @@ export function Tracker({
         className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}
         aria-label="Navegação principal"
       >
-        <Link className="wordmark" href={demo ? "/demo" : "/"}>
+        <Link className="wordmark" href="/">
           <BrandMark />
           saastemics<span className="wordmark-dot">.</span>
         </Link>
@@ -844,22 +828,20 @@ export function Tracker({
               <strong>{displayName}</strong>
               <small>Espaço pessoal</small>
             </span>
-            {!demo && (
-              <IconButton
-                label="Sair do aplicativo"
-                onClick={async () => {
-                  await fetch("/api/auth/sign-out", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: "{}",
-                  });
-                  router.replace("/login");
-                  router.refresh();
-                }}
-              >
-                <LogOut size={16} />
-              </IconButton>
-            )}
+            <IconButton
+              label="Sair do aplicativo"
+              onClick={async () => {
+                await fetch("/api/auth/sign-out", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: "{}",
+                });
+                router.replace("/login");
+                router.refresh();
+              }}
+            >
+              <LogOut size={16} />
+            </IconButton>
           </div>
         </div>
       </aside>
@@ -899,17 +881,6 @@ export function Tracker({
             </IconButton>
           </div>
         </header>
-        {demo && (
-          <div className="demo-banner">
-            <span>
-              <span className="demo-dot" />
-              Demonstração · dados fictícios, alterações não são salvas
-            </span>
-            <Link href="/">
-              Usar meus dados <ArrowUpRight size={13} />
-            </Link>
-          </div>
-        )}
         <main id="main-content" className="main-content">
           <div className="page-heading">
             <div>
@@ -1430,11 +1401,7 @@ export function Tracker({
               Feito para o seu dia a dia.
             </span>
             <span>
-              {demo
-                ? "Dados de exemplo · nenhuma conta conectada"
-                : busy
-                  ? "Salvando alterações..."
-                  : "Seu espaço privado"}
+              {busy ? "Salvando alterações..." : "Seu espaço privado"}
               <span className="footer-separator">·</span>
               <button onClick={() => setInfo(true)}>
                 Valores com contexto
@@ -1636,12 +1603,7 @@ export function Tracker({
         description="Pessoal, simples e do seu jeito."
       >
         {settings && (
-          <SettingsPanel
-            workspace={data}
-            onCommit={commit}
-            busy={busy}
-            demo={demo}
-          />
+          <SettingsPanel workspace={data} onCommit={commit} busy={busy} />
         )}
       </Sheet>
       <Sheet

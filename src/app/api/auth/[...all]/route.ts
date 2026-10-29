@@ -1,18 +1,21 @@
 import { toNextJsHandler } from "better-auth/next-js";
 import { auth, authReady } from "@/server/auth";
-export async function GET(request: Request) {
+import { authFailureResponse } from "@/server/auth-error";
+export const runtime = "nodejs";
+async function handle(request: Request) {
   if (!authReady())
     return Response.json(
       { error: "Autenticação não configurada." },
       { status: 503 },
     );
-  return toNextJsHandler(auth()).GET(request);
+  try {
+    const handlers = toNextJsHandler(auth());
+    const response = await (request.method === "GET"
+      ? handlers.GET(request)
+      : handlers.POST(request));
+    return response.status >= 500 ? authFailureResponse() : response;
+  } catch (error) {
+    return authFailureResponse(error);
+  }
 }
-export async function POST(request: Request) {
-  if (!authReady())
-    return Response.json(
-      { error: "Autenticação não configurada." },
-      { status: 503 },
-    );
-  return toNextJsHandler(auth()).POST(request);
-}
+export { handle as GET, handle as POST };

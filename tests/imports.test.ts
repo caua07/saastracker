@@ -8,7 +8,7 @@ import {
   subscriptionsCsv,
 } from "@/domain/imports";
 import { emptyWorkspace } from "@/domain/model";
-import { demoWorkspace } from "@/domain/demo";
+import { sampleWorkspace } from "./support/workspace";
 const id = "00000000-0000-4000-8000-000000000001";
 describe("CSV e conciliação", () => {
   it("interpreta decimal BRL, USD e créditos", () => {
@@ -57,7 +57,7 @@ describe("CSV e conciliação", () => {
     expect(p.errors[0]).toContain("Linha 2");
   });
   it("neutraliza fórmula na exportação de texto", () => {
-    const w = demoWorkspace();
+    const w = sampleWorkspace();
     w.subscriptions[0].name = '=IMPORTXML("https://example.test")';
     expect(subscriptionsCsv(w)).toContain("'=IMPORTXML");
   });
